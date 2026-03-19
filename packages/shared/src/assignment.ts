@@ -145,6 +145,23 @@ export const assignmentDetailsResponseSchema = z.object({
   assignment: assignmentDetailsSchema,
 });
 
+export const deleteAssignmentResponseSchema = z.object({
+  success: z.literal(true),
+  assignmentId: mongoIdSchema,
+});
+
+export const assignmentCreatedRealtimeEventSchema = z.object({
+  type: z.literal('assignment:created'),
+  assignment: assignmentListItemSchema,
+});
+
+export const assignmentDeletedRealtimeEventSchema = z.object({
+  type: z.literal('assignment:deleted'),
+  assignmentId: mongoIdSchema,
+  deletedByUserId: mongoIdSchema,
+  deletedAt: z.string(),
+});
+
 export type QuestionTypeOption = z.infer<typeof questionTypeOptionSchema>;
 export type AssignmentQuestionRow = z.infer<typeof assignmentQuestionRowSchema>;
 export type AssignmentFileMeta = z.infer<typeof assignmentFileMetaSchema>;
@@ -156,3 +173,6 @@ export type AssignmentListItem = z.infer<typeof assignmentListItemSchema>;
 export type AssignmentDetails = z.infer<typeof assignmentDetailsSchema>;
 export type AssignmentListResponse = z.infer<typeof assignmentListResponseSchema>;
 export type AssignmentDetailsResponse = z.infer<typeof assignmentDetailsResponseSchema>;
+export type DeleteAssignmentResponse = z.infer<typeof deleteAssignmentResponseSchema>;
+export type AssignmentCreatedRealtimeEvent = z.infer<typeof assignmentCreatedRealtimeEventSchema>;
+export type AssignmentDeletedRealtimeEvent = z.infer<typeof assignmentDeletedRealtimeEventSchema>;

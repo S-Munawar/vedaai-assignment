@@ -13,6 +13,10 @@
       "types": "./src/assignment.ts",
       "default": "./src/assignment.ts"
     },
+    "./notification": {
+      "types": "./src/notification.ts",
+      "default": "./src/notification.ts"
+    },
     "./schools": {
       "types": "./src/schools.ts",
       "default": "./src/schools.ts"

@@ -4,11 +4,14 @@ import { assignmentIntakeRequestSchema, mongoIdSchema } from '@repo/shared/assig
 import { AssignmentModel } from '@/models/assignment.model';
 import { UserModel } from '@/models/user.model';
 import { verifyAuthToken } from '@/services/auth-token.service';
+import { createAssignmentDeletedNotification } from '@/services/notification.service';
+import { emitAssignmentCreatedEvent, emitAssignmentDeletedEvent } from '@/socket/realtime.context';
 import { parseCookie } from '@/utils/cookie.util';
 
 type AuthenticatedUser = {
   _id: Types.ObjectId;
   school: Types.ObjectId;
+  username: string;
 };
 
 type AssignmentCreator = {
@@ -68,7 +71,7 @@ async function requireAuthenticatedUser(req: Request, res: Response): Promise<Au
     return null;
   }
 
-  const creator = await UserModel.findById(authPayload.sub).select('_id school');
+  const creator = await UserModel.findById(authPayload.sub).select('_id school username');
 
   if (!creator) {
     res.status(401).json({ success: false, error: 'Authenticated user no longer exists' });
@@ -117,6 +120,23 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
       generatedContent,
       school: creator.school,
       createdBy: creator._id,
+    });
+
+    emitAssignmentCreatedEvent(creator.school.toString(), {
+      type: 'assignment:created',
+      assignment: {
+        id: assignment._id.toString(),
+        chapterName: assignment.chapterName,
+        dueDate: assignment.dueDate,
+        totalQuestions: payload.totals.totalQuestions,
+        totalMarks: payload.totals.totalMarks,
+        questionTypeCount: assignment.questionTypes.length,
+        createdBy: {
+          id: creator._id.toString(),
+          username: creator.username,
+        },
+        createdAt: assignment.createdAt.toISOString(),
+      },
     });
 
     console.log('📥 Assignment intake received:', JSON.stringify(payload, null, 2));
@@ -227,5 +247,76 @@ export async function getAssignmentById(req: Request, res: Response) {
   } catch (error) {
     console.error('❌ Error fetching assignment:', error);
     return res.status(500).json({ success: false, error: 'Failed to fetch assignment' });
+  }
+}
+
+export async function deleteAssignment(req: Request, res: Response) {
+  try {
+    const user = await requireAuthenticatedUser(req, res);
+
+    if (!user) {
+      return;
+    }
+
+    const idParsed = mongoIdSchema.safeParse(req.params.assignmentId);
+
+    if (!idParsed.success) {
+      return res.status(400).json({ success: false, error: 'Invalid assignment id' });
+    }
+
+    const assignment = await AssignmentModel.findOne({
+      _id: idParsed.data,
+      school: user.school,
+    })
+      .select('_id createdBy school chapterName')
+      .populate({ path: 'createdBy', select: 'username' });
+
+    if (!assignment) {
+      return res.status(404).json({ success: false, error: 'Assignment not found' });
+    }
+
+    // Check if the user is the creator
+    if (assignment.createdBy._id.toString() !== user._id.toString()) {
+      return res.status(403).json({ success: false, error: 'You can only delete assignments you created' });
+    }
+
+    // Delete the assignment
+    await AssignmentModel.deleteOne({ _id: idParsed.data });
+
+    // Emit real-time delete event
+    emitAssignmentDeletedEvent(user.school.toString(), {
+      type: 'assignment:deleted',
+      assignmentId: idParsed.data,
+      deletedByUserId: user._id.toString(),
+      deletedAt: new Date().toISOString(),
+    });
+
+    // Create notifications for all users in the school
+    try {
+      const schoolUsers = await UserModel.find({ school: user.school }).select('_id');
+
+      for (const schoolUser of schoolUsers) {
+        void createAssignmentDeletedNotification(
+          schoolUser._id,
+          user.school,
+          assignment.chapterName,
+          user.username,
+          assignment._id,
+        );
+      }
+    } catch (notificationError) {
+      console.error('⚠️ Error creating notifications:', notificationError);
+      // Don't fail the delete if notifications fail
+    }
+
+    console.log('🗑️ Assignment deleted:', idParsed.data);
+
+    return res.json({
+      success: true,
+      assignmentId: idParsed.data,
+    });
+  } catch (error) {
+    console.error('❌ Error deleting assignment:', error);
+    return res.status(500).json({ success: false, error: 'Failed to delete assignment' });
   }
 }

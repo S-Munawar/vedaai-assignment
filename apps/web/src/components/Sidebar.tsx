@@ -1,13 +1,23 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { assignmentCreatedRealtimeEventSchema } from '@repo/shared/assignment';
 import { useAuth } from '@/hooks/useAuth';
+import { getRealtimeSocket } from '@/lib/realtime';
+import {
+  clearUnreadCount,
+  getUnreadCount,
+  incrementUnreadCount,
+  subscribeUnreadCount,
+} from '@/lib/notifications-unread';
 
 const navigationItems = [
   { href: '/', label: 'Home' },
   { href: '/my-groups', label: 'My Groups' },
   { href: '/assignments', label: 'Assignments' },
+  { href: '/notifications', label: 'Notifications' },
   { href: '/ai-teachers-toolkit', label: 'AI Teacher\'s Toolkit' },
   { href: '/my-library', label: 'My Library' },
   { href: '/create-assignment', label: 'Create Assignment' },
@@ -17,6 +27,51 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isLoggingOut, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    setUnreadCount(getUnreadCount());
+
+    return subscribeUnreadCount((value) => {
+      setUnreadCount(value);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!pathname.startsWith('/notifications')) {
+      return;
+    }
+
+    clearUnreadCount();
+  }, [pathname]);
+
+  useEffect(() => {
+    const socket = getRealtimeSocket();
+
+    if (!socket) {
+      return;
+    }
+
+    const onAssignmentCreated = (payload: unknown) => {
+      const parsed = assignmentCreatedRealtimeEventSchema.safeParse(payload);
+
+      if (!parsed.success) {
+        return;
+      }
+
+      if (pathname.startsWith('/notifications')) {
+        return;
+      }
+
+      incrementUnreadCount(1);
+    };
+
+    socket.on('assignment:created', onAssignmentCreated);
+
+    return () => {
+      socket.off('assignment:created', onAssignmentCreated);
+    };
+  }, [pathname]);
 
   async function handleLogout() {
     await logout();
@@ -49,7 +104,18 @@ export default function Sidebar() {
                     : 'text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                 }`}
               >
-                {item.label}
+                <span className="flex items-center justify-between gap-2">
+                  <span>{item.label}</span>
+                  {item.href === '/notifications' && unreadCount > 0 ? (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        pathname === item.href ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'
+                      }`}
+                    >
+                      {unreadCount}
+                    </span>
+                  ) : null}
+                </span>
               </Link>
             </li>
           ))}

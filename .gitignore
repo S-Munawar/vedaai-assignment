@@ -36,3 +36,5 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+vedaai-context-prompt.md
+Notes.txt
