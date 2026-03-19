@@ -2,43 +2,24 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
-import { getApiUrl } from '@/lib/api-base';
+import { FormEvent } from 'react';
+import { ALLOWED_SCHOOLS } from '@repo/shared/auth';
+import { useAuth } from '@/hooks/useAuth';
 
-const SCHOOL_OPTIONS = ['Delhi Public Schoool'];
+const SCHOOL_OPTIONS = ALLOWED_SCHOOLS;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [schoolName, setSchoolName] = useState(SCHOOL_OPTIONS[0]);
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { registerForm, error, isSubmitting, setRegisterField, register, clearError } = useAuth();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError('');
-    setIsLoading(true);
+    clearError();
+    const success = await register();
 
-    try {
-      const response = await fetch(getApiUrl('/auth/register'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, schoolName, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Registration failed');
-      }
-
+    if (success) {
       router.push('/');
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -52,8 +33,8 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
             <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={registerForm.username}
+              onChange={(e) => setRegisterField('username', e.target.value)}
               required
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Choose username"
@@ -63,8 +44,8 @@ export default function RegisterPage() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
             <select
-              value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
+              value={registerForm.schoolName}
+              onChange={(e) => setRegisterField('schoolName', e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SCHOOL_OPTIONS.map((school) => (
@@ -79,8 +60,8 @@ export default function RegisterPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={registerForm.password}
+              onChange={(e) => setRegisterField('password', e.target.value)}
               required
               minLength={6}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
@@ -92,10 +73,10 @@ export default function RegisterPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="w-full rounded-lg bg-blue-600 text-white py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
           >
-            {isLoading ? 'Please wait...' : 'Register'}
+            {isSubmitting ? 'Please wait...' : 'Register'}
           </button>
         </form>
 

@@ -2,70 +2,33 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
-import { signInWithPopup } from 'firebase/auth';
-import { getApiUrl } from '@/lib/api-base';
-import { getFirebaseAuthClient, getGoogleProvider } from '@/lib/firebase';
+import { FormEvent } from 'react';
+import { ALLOWED_SCHOOLS } from '@repo/shared/auth';
+import { useAuth } from '@/hooks/useAuth';
 
-const SCHOOL_OPTIONS = ['Delhi Public Schoool'];
+const SCHOOL_OPTIONS = ALLOWED_SCHOOLS;
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
-  const [schoolName, setSchoolName] = useState(SCHOOL_OPTIONS[0]);
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError('');
-    setIsLoading(true);
+    clearError();
+    const success = await login();
 
-    try {
-      const response = await fetch(getApiUrl('/auth/login'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, schoolName, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Login failed');
-      }
-
+    if (success) {
       router.push('/');
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
-    } finally {
-      setIsLoading(false);
     }
   }
 
   async function handleGoogleLogin() {
-    setError('');
-    setIsLoading(true);
+    clearError();
+    const success = await startGoogleRegistration();
 
-    try {
-      const auth = getFirebaseAuthClient();
-      const provider = getGoogleProvider();
-      const result = await signInWithPopup(auth, provider);
-      const idToken = await result.user.getIdToken();
-
-      const pendingRegistration = {
-        idToken,
-        email: result.user.email || '',
-        username: result.user.displayName || result.user.email?.split('@')[0] || 'Google User',
-      };
-
-      sessionStorage.setItem('pendingGoogleRegistration', JSON.stringify(pendingRegistration));
+    if (success) {
       router.push('/complete-registration');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google sign-in failed');
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -75,12 +38,22 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold text-slate-900 mb-2">Login</h1>
         <p className="text-sm text-slate-600 mb-6">Sign in with credentials or Google.</p>
 
+        <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Demo Credentials</p>
+          <p className="mt-1 text-sm text-blue-900">
+            Username: <span className="font-semibold">Demo1</span>
+          </p>
+          <p className="text-sm text-blue-900">
+            Password: <span className="font-semibold">Password@123</span>
+          </p>
+        </div>
+
         <form className="space-y-4" onSubmit={onSubmit}>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Username</label>
             <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={loginForm.username}
+              onChange={(e) => setLoginField('username', e.target.value)}
               required
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter username"
@@ -90,8 +63,8 @@ export default function LoginPage() {
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
             <select
-              value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
+              value={loginForm.schoolName}
+              onChange={(e) => setLoginField('schoolName', e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SCHOOL_OPTIONS.map((school) => (
@@ -106,8 +79,8 @@ export default function LoginPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
             <input
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={loginForm.password}
+              onChange={(e) => setLoginField('password', e.target.value)}
               required
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter password"
@@ -118,10 +91,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={isLoading}
+            disabled={isSubmitting}
             className="w-full rounded-lg bg-blue-600 text-white py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
           >
-            {isLoading ? 'Please wait...' : 'Login'}
+            {isSubmitting ? 'Please wait...' : 'Login'}
           </button>
         </form>
 
@@ -130,7 +103,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={handleGoogleLogin}
-          disabled={isLoading}
+          disabled={isSubmitting}
           className="w-full rounded-lg border border-slate-300 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
         >
           Continue with Google

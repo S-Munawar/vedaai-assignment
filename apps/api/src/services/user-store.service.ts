@@ -1,78 +1,107 @@
-import { createHash, randomUUID } from 'node:crypto';
+import bcrypt from 'bcryptjs';
 import { type SchoolName, type UserRecord } from '@/models/auth.model';
+import { UserModel } from '@/models/user.model';
 
-const usersByUsername = new Map<string, UserRecord>();
-const usersByEmail = new Map<string, UserRecord>();
-
-function hashPassword(password: string) {
-  return createHash('sha256').update(password).digest('hex');
-}
-
-export function registerCredentialUser(input: {
+type UserRecordLike = {
+  _id: { toString(): string };
   username: string;
-  password: string;
+  email?: string | null;
   schoolName: SchoolName;
-}): UserRecord {
-  const normalizedUsername = input.username.trim().toLowerCase();
+  passwordHash?: string | null;
+  provider: UserRecord['provider'];
+};
 
-  if (usersByUsername.has(normalizedUsername)) {
-    throw new Error('Username already exists');
-  }
-
-  const user: UserRecord = {
-    id: randomUUID(),
-    username: input.username.trim(),
-    schoolName: input.schoolName,
-    passwordHash: hashPassword(input.password),
-    provider: 'credentials',
+function mapUserRecord(doc: UserRecordLike): UserRecord {
+  return {
+    id: doc._id.toString(),
+    username: doc.username,
+    email: doc.email ?? undefined,
+    schoolName: doc.schoolName,
+    passwordHash: doc.passwordHash ?? undefined,
+    provider: doc.provider,
   };
-
-  usersByUsername.set(normalizedUsername, user);
-  return user;
 }
 
-export function loginCredentialUser(input: {
+export async function registerCredentialUser(input: {
   username: string;
   password: string;
   schoolName: SchoolName;
-}): UserRecord | null {
-  const normalizedUsername = input.username.trim().toLowerCase();
-  const user = usersByUsername.get(normalizedUsername);
+}): Promise<UserRecord> {
+  const username = input.username.trim();
+  const credentialUsernameKey = username.toLowerCase();
+  const passwordHash = await bcrypt.hash(input.password, 10);
 
-  if (
-    !user ||
-    user.provider !== 'credentials' ||
-    user.schoolName !== input.schoolName ||
-    user.passwordHash !== hashPassword(input.password)
-  ) {
+  try {
+    const doc = await UserModel.create({
+      username,
+      schoolName: input.schoolName,
+      passwordHash,
+      provider: 'credentials',
+      credentialUsernameKey,
+    });
+
+    return mapUserRecord(doc);
+  } catch (error) {
+    const mongoError = error as { code?: number };
+
+    if (mongoError?.code === 11000) {
+      throw new Error('Username already exists');
+    }
+
+    throw error;
+  }
+}
+
+export async function loginCredentialUser(input: {
+  username: string;
+  password: string;
+  schoolName: SchoolName;
+}): Promise<UserRecord | null> {
+  const credentialUsernameKey = input.username.trim().toLowerCase();
+  const user = await UserModel.findOne({
+    provider: 'credentials',
+    credentialUsernameKey,
+    schoolName: input.schoolName,
+  });
+
+  if (!user?.passwordHash) {
     return null;
   }
 
-  return user;
+  const isValidPassword = await bcrypt.compare(input.password, user.passwordHash);
+
+  if (!isValidPassword) {
+    return null;
+  }
+
+  return mapUserRecord(user);
 }
 
-export function upsertGoogleUser(input: {
+export async function upsertGoogleUser(input: {
   email: string;
   name: string;
   schoolName: SchoolName;
-}): UserRecord {
+}): Promise<UserRecord> {
   const normalizedEmail = input.email.trim().toLowerCase();
-  const existing = usersByEmail.get(normalizedEmail);
 
-  const user: UserRecord =
-    existing ||
-    ({
-      id: randomUUID(),
-      username: input.name.trim(),
-      email: normalizedEmail,
-      schoolName: input.schoolName,
-      provider: 'google',
-    } as UserRecord);
+  const updated = await UserModel.findOneAndUpdate(
+    { email: normalizedEmail, provider: 'google' },
+    {
+      $set: {
+        username: input.name.trim() || 'Google User',
+        schoolName: input.schoolName,
+        email: normalizedEmail,
+      },
+      $setOnInsert: {
+        provider: 'google',
+      },
+    },
+    { upsert: true, new: true },
+  );
 
-  user.schoolName = input.schoolName;
-  user.username = input.name.trim() || 'Google User';
-  user.email = normalizedEmail;
+  if (!updated) {
+    throw new Error('Could not upsert google user');
+  }
 
-  usersByEmail.set(normalizedEmail, user);
-  return user;
+  return mapUserRecord(updated);
 }

@@ -1,39 +1,31 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect, useState } from 'react';
-import { getApiUrl } from '@/lib/api-base';
+import { FormEvent, useEffect } from 'react';
+import { ALLOWED_SCHOOLS } from '@repo/shared/auth';
+import { useAuth } from '@/hooks/useAuth';
 
-type PendingGoogleRegistration = {
-  idToken: string;
-  email: string;
-  username: string;
-};
-
-const SCHOOL_OPTIONS = ['Delhi Public Schoool'];
+const SCHOOL_OPTIONS = ALLOWED_SCHOOLS;
 
 export default function CompleteRegistrationPage() {
   const router = useRouter();
-  const [pending, setPending] = useState<PendingGoogleRegistration | null>(null);
-  const [schoolName, setSchoolName] = useState(SCHOOL_OPTIONS[0]);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const {
+    pendingGoogleRegistration,
+    completeRegistrationForm,
+    error,
+    isSubmitting,
+    setCompleteSchoolName,
+    loadPendingGoogleRegistration,
+    completeGoogleRegistration,
+    setError,
+  } = useAuth();
+
+  const pending = pendingGoogleRegistration;
+  const schoolName = completeRegistrationForm.schoolName;
 
   useEffect(() => {
-    const raw = sessionStorage.getItem('pendingGoogleRegistration');
-
-    if (!raw) {
-      setError('Google sign-in session not found. Please try again.');
-      return;
-    }
-
-    try {
-      const parsed = JSON.parse(raw) as PendingGoogleRegistration;
-      setPending(parsed);
-    } catch {
-      setError('Invalid Google sign-in session. Please try again.');
-    }
-  }, []);
+    loadPendingGoogleRegistration();
+  }, [loadPendingGoogleRegistration]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -43,29 +35,11 @@ export default function CompleteRegistrationPage() {
       return;
     }
 
-    setError('');
-    setIsLoading(true);
+    const success = await completeGoogleRegistration();
 
-    try {
-      const response = await fetch(getApiUrl('/auth/google'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: pending.idToken, schoolName }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Could not complete registration');
-      }
-
-      sessionStorage.removeItem('pendingGoogleRegistration');
+    if (success) {
       router.push('/');
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not complete registration');
-    } finally {
-      setIsLoading(false);
     }
   }
 
@@ -87,7 +61,7 @@ export default function CompleteRegistrationPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
             <select
               value={schoolName}
-              onChange={(e) => setSchoolName(e.target.value)}
+              onChange={(e) => setCompleteSchoolName(e.target.value as (typeof ALLOWED_SCHOOLS)[number])}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
               {SCHOOL_OPTIONS.map((school) => (
@@ -102,10 +76,10 @@ export default function CompleteRegistrationPage() {
 
           <button
             type="submit"
-            disabled={isLoading || !pending}
+            disabled={isSubmitting || !pending}
             className="w-full rounded-lg bg-blue-600 text-white py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-60"
           >
-            {isLoading ? 'Please wait...' : 'Complete Registration'}
+            {isSubmitting ? 'Please wait...' : 'Complete Registration'}
           </button>
         </form>
       </div>

@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '@/hooks/useAuth';
 
 const navigationItems = [
   { href: '/', label: 'Home' },
@@ -14,6 +15,14 @@ const navigationItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { isLoggingOut, logout } = useAuth();
+
+  async function handleLogout() {
+    await logout();
+    router.push('/login');
+    router.refresh();
+  }
 
   if (
     pathname.startsWith('/login') ||
@@ -24,7 +33,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-[250px] bg-gray-100 border-r border-gray-200 p-5 h-screen overflow-y-auto sticky top-0">
+    <aside className="w-64 bg-gray-100 border-r border-gray-200 p-5 h-screen overflow-y-auto sticky top-0">
       <div className="mb-7 pb-5 border-b-2 border-gray-200">
         <h1 className="m-0 text-2xl font-bold text-gray-800">VedaAI</h1>
       </div>
@@ -46,6 +55,16 @@ export default function Sidebar() {
           ))}
         </ul>
       </nav>
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <button
+          type="button"
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="w-full px-4 py-3 rounded-md text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-60"
+        >
+          {isLoggingOut ? 'Logging out...' : 'Logout'}
+        </button>
+      </div>
     </aside>
   );
 }

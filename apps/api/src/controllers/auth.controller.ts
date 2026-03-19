@@ -1,5 +1,9 @@
 import type { Request, Response } from 'express';
-import { isValidSchoolName } from '@/models/auth.model';
+import {
+  googleAuthRequestSchema,
+  loginRequestSchema,
+  registerRequestSchema,
+} from '@repo/shared/auth';
 import { signAuthToken, verifyAuthToken } from '@/services/auth-token.service';
 import { verifyGoogleIdToken } from '@/services/google-auth.service';
 import {
@@ -11,25 +15,15 @@ import { buildAuthCookie, clearAuthCookie, parseCookie } from '@/utils/cookie.ut
 
 export async function register(req: Request, res: Response) {
   try {
-    const { username, password, schoolName } = req.body as {
-      username?: string;
-      password?: string;
-      schoolName?: string;
-    };
+    const parsed = registerRequestSchema.safeParse(req.body);
 
-    if (!username || !password || !schoolName) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request body' });
     }
 
-    if (!isValidSchoolName(schoolName)) {
-      return res.status(400).json({ error: 'Invalid school name' });
-    }
+    const { username, password, schoolName } = parsed.data;
 
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
-
-    const user = registerCredentialUser({ username, password, schoolName });
+    const user = await registerCredentialUser({ username, password, schoolName });
 
     const token = await signAuthToken({
       sub: user.id,
@@ -45,6 +39,7 @@ export async function register(req: Request, res: Response) {
         id: user.id,
         username: user.username,
         schoolName: user.schoolName,
+        provider: 'credentials',
       },
     });
   } catch (error) {
@@ -58,21 +53,15 @@ export async function register(req: Request, res: Response) {
 
 export async function login(req: Request, res: Response) {
   try {
-    const { username, password, schoolName } = req.body as {
-      username?: string;
-      password?: string;
-      schoolName?: string;
-    };
+    const parsed = loginRequestSchema.safeParse(req.body);
 
-    if (!username || !password || !schoolName) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request body' });
     }
 
-    if (!isValidSchoolName(schoolName)) {
-      return res.status(400).json({ error: 'Invalid school name' });
-    }
+    const { username, password, schoolName } = parsed.data;
 
-    const user = loginCredentialUser({ username, password, schoolName });
+    const user = await loginCredentialUser({ username, password, schoolName });
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid username, school name, or password' });
@@ -92,6 +81,7 @@ export async function login(req: Request, res: Response) {
         id: user.id,
         username: user.username,
         schoolName: user.schoolName,
+        provider: 'credentials',
       },
     });
   } catch {
@@ -101,21 +91,16 @@ export async function login(req: Request, res: Response) {
 
 export async function googleAuth(req: Request, res: Response) {
   try {
-    const { idToken, schoolName } = req.body as {
-      idToken?: string;
-      schoolName?: string;
-    };
+    const parsed = googleAuthRequestSchema.safeParse(req.body);
 
-    if (!idToken || !schoolName) {
-      return res.status(400).json({ error: 'Missing required fields' });
+    if (!parsed.success) {
+      return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request body' });
     }
 
-    if (!isValidSchoolName(schoolName)) {
-      return res.status(400).json({ error: 'Invalid school name' });
-    }
+    const { idToken, schoolName } = parsed.data;
 
     const verified = await verifyGoogleIdToken(idToken);
-    const user = upsertGoogleUser({
+    const user = await upsertGoogleUser({
       email: verified.email,
       name: verified.name,
       schoolName,
@@ -137,6 +122,7 @@ export async function googleAuth(req: Request, res: Response) {
         username: user.username,
         email: user.email,
         schoolName: user.schoolName,
+        provider: 'google',
       },
     });
   } catch {
