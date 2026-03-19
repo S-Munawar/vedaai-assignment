@@ -12,4 +12,5 @@ export const env = {
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY || '',
   authCookieName: 'vedaai_auth_token',
+  adminApiKey: process.env.ADMIN_API_KEY || 'dev-admin-key',
 };

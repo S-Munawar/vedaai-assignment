@@ -28,6 +28,7 @@ export async function register(req: Request, res: Response) {
     const token = await signAuthToken({
       sub: user.id,
       username: user.username,
+      schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'credentials',
     });
@@ -38,12 +39,17 @@ export async function register(req: Request, res: Response) {
       user: {
         id: user.id,
         username: user.username,
+        schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'credentials',
       },
     });
   } catch (error) {
-    if (error instanceof Error && error.message === 'Username already exists') {
+    if (
+      error instanceof Error &&
+      (error.message === 'Username already exists' ||
+        error.message === 'Selected school is not available. Please contact admin.')
+    ) {
       return res.status(400).json({ error: error.message });
     }
 
@@ -70,6 +76,7 @@ export async function login(req: Request, res: Response) {
     const token = await signAuthToken({
       sub: user.id,
       username: user.username,
+      schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'credentials',
     });
@@ -80,6 +87,7 @@ export async function login(req: Request, res: Response) {
       user: {
         id: user.id,
         username: user.username,
+        schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'credentials',
       },
@@ -110,6 +118,7 @@ export async function googleAuth(req: Request, res: Response) {
       sub: user.id,
       username: user.username,
       email: user.email,
+      schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'google',
     });
@@ -121,11 +130,19 @@ export async function googleAuth(req: Request, res: Response) {
         id: user.id,
         username: user.username,
         email: user.email,
+        schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'google',
       },
     });
-  } catch {
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message === 'Selected school is not available. Please contact admin.'
+    ) {
+      return res.status(400).json({ error: error.message });
+    }
+
     return res.status(401).json({ error: 'Google authentication failed' });
   }
 }

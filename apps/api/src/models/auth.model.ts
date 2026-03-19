@@ -1,5 +1,4 @@
 import {
-  ALLOWED_SCHOOLS,
   schoolNameSchema,
   type AuthProvider,
   type AuthTokenPayload,
@@ -7,7 +6,6 @@ import {
   type SchoolName,
 } from '@repo/shared/auth';
 
-export { ALLOWED_SCHOOLS };
 export type { AuthProvider, AuthTokenPayload, SchoolName };
 
 export type UserRecord = AuthUser & {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const ALLOWED_SCHOOLS = ['Delhi Public Schoool'] as const;
 
-export const schoolNameSchema = z.enum(ALLOWED_SCHOOLS);
+export const schoolNameSchema = z.string().trim().min(1, 'School name is required').max(120);
 export const authProviderSchema = z.enum(['credentials', 'google']);
 
 export const registerRequestSchema = z.object({
@@ -26,6 +26,7 @@ export const authUserSchema = z.object({
   id: z.string(),
   username: z.string(),
   email: z.string().optional(),
+  schoolId: z.string(),
   schoolName: schoolNameSchema,
   provider: authProviderSchema,
 });
@@ -43,6 +44,7 @@ export const authTokenPayloadSchema = z.object({
   sub: z.string(),
   username: z.string().optional(),
   email: z.string().optional(),
+  schoolId: z.string(),
   schoolName: schoolNameSchema,
   provider: authProviderSchema,
 });

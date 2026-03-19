@@ -1,5 +1,4 @@
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
-import { ALLOWED_SCHOOLS } from '@/models/auth.model';
 
 const userSchema = new Schema(
   {
@@ -15,10 +14,11 @@ const userSchema = new Schema(
       unique: true,
       sparse: true,
     },
-    schoolName: {
-      type: String,
-      enum: ALLOWED_SCHOOLS,
+    school: {
+      type: Schema.Types.ObjectId,
+      ref: 'School',
       required: true,
+      index: true,
     },
     passwordHash: {
       type: String,

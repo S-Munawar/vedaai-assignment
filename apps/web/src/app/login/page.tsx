@@ -2,15 +2,58 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { FormEvent } from 'react';
-import { ALLOWED_SCHOOLS } from '@repo/shared/auth';
+import { FormEvent, useEffect, useState } from 'react';
+import { listSchoolsResponseSchema, schoolsErrorResponseSchema } from '@repo/shared/schools';
 import { useAuth } from '@/hooks/useAuth';
+import { getApiUrl } from '@/lib/api-base';
 
-const SCHOOL_OPTIONS = ALLOWED_SCHOOLS;
+type SchoolOption = {
+  id: string;
+  name: string;
+};
 
 export default function LoginPage() {
   const router = useRouter();
   const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
+  const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const [schoolLoadError, setSchoolLoadError] = useState('');
+
+  useEffect(() => {
+    async function loadSchools() {
+      setSchoolLoadError('');
+
+      try {
+        const response = await fetch(getApiUrl('/schools'));
+
+        if (!response.ok) {
+          const rawError = await response.json().catch(() => null);
+          const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
+          setSchoolLoadError(parsedError.success ? parsedError.data.error : 'Failed to load schools');
+          return;
+        }
+
+        const raw = await response.json().catch(() => null);
+        const parsed = listSchoolsResponseSchema.safeParse(raw);
+
+        if (!parsed.success) {
+          setSchoolLoadError('Unexpected schools response');
+          return;
+        }
+
+        setSchoolOptions(parsed.data.schools);
+
+        const firstSchool = parsed.data.schools[0];
+
+        if (firstSchool) {
+          setLoginField('schoolName', firstSchool.name);
+        }
+      } catch {
+        setSchoolLoadError('Could not reach backend endpoint.');
+      }
+    }
+
+    void loadSchools();
+  }, [setLoginField]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,12 +110,13 @@ export default function LoginPage() {
               onChange={(e) => setLoginField('schoolName', e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {SCHOOL_OPTIONS.map((school) => (
-                <option key={school} value={school}>
-                  {school}
+              {schoolOptions.map((school) => (
+                <option key={school.id} value={school.name}>
+                  {school.name}
                 </option>
               ))}
             </select>
+            {schoolLoadError ? <p className="mt-1 text-xs text-red-600">{schoolLoadError}</p> : null}
           </div>
 
           <div>

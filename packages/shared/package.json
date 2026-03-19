@@ -8,6 +8,14 @@
     "./auth": {
       "types": "./src/auth.ts",
       "default": "./src/auth.ts"
+    },
+    "./assignment": {
+      "types": "./src/assignment.ts",
+      "default": "./src/assignment.ts"
+    },
+    "./schools": {
+      "types": "./src/schools.ts",
+      "default": "./src/schools.ts"
     }
   },
   "scripts": {

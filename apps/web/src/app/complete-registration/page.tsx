@@ -1,11 +1,15 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { FormEvent, useEffect } from 'react';
-import { ALLOWED_SCHOOLS } from '@repo/shared/auth';
+import { FormEvent, useEffect, useState } from 'react';
+import { listSchoolsResponseSchema, schoolsErrorResponseSchema } from '@repo/shared/schools';
 import { useAuth } from '@/hooks/useAuth';
+import { getApiUrl } from '@/lib/api-base';
 
-const SCHOOL_OPTIONS = ALLOWED_SCHOOLS;
+type SchoolOption = {
+  id: string;
+  name: string;
+};
 
 export default function CompleteRegistrationPage() {
   const router = useRouter();
@@ -22,10 +26,49 @@ export default function CompleteRegistrationPage() {
 
   const pending = pendingGoogleRegistration;
   const schoolName = completeRegistrationForm.schoolName;
+  const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const [schoolLoadError, setSchoolLoadError] = useState('');
 
   useEffect(() => {
     loadPendingGoogleRegistration();
   }, [loadPendingGoogleRegistration]);
+
+  useEffect(() => {
+    async function loadSchools() {
+      setSchoolLoadError('');
+
+      try {
+        const response = await fetch(getApiUrl('/schools'));
+
+        if (!response.ok) {
+          const rawError = await response.json().catch(() => null);
+          const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
+          setSchoolLoadError(parsedError.success ? parsedError.data.error : 'Failed to load schools');
+          return;
+        }
+
+        const raw = await response.json().catch(() => null);
+        const parsed = listSchoolsResponseSchema.safeParse(raw);
+
+        if (!parsed.success) {
+          setSchoolLoadError('Unexpected schools response');
+          return;
+        }
+
+        setSchoolOptions(parsed.data.schools);
+
+        const firstSchool = parsed.data.schools[0];
+
+        if (firstSchool) {
+          setCompleteSchoolName(firstSchool.name);
+        }
+      } catch {
+        setSchoolLoadError('Could not reach backend endpoint.');
+      }
+    }
+
+    void loadSchools();
+  }, [setCompleteSchoolName]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -61,15 +104,16 @@ export default function CompleteRegistrationPage() {
             <label className="block text-sm font-medium text-slate-700 mb-1">School Name</label>
             <select
               value={schoolName}
-              onChange={(e) => setCompleteSchoolName(e.target.value as (typeof ALLOWED_SCHOOLS)[number])}
+              onChange={(e) => setCompleteSchoolName(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
             >
-              {SCHOOL_OPTIONS.map((school) => (
-                <option key={school} value={school}>
-                  {school}
+              {schoolOptions.map((school) => (
+                <option key={school.id} value={school.name}>
+                  {school.name}
                 </option>
               ))}
             </select>
+            {schoolLoadError ? <p className="mt-1 text-xs text-red-600">{schoolLoadError}</p> : null}
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}

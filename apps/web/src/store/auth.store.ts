@@ -3,14 +3,12 @@
 import { signInWithPopup } from 'firebase/auth';
 import { create } from 'zustand';
 import {
-  ALLOWED_SCHOOLS,
   authErrorResponseSchema,
   authSuccessResponseSchema,
   googleAuthRequestSchema,
   loginRequestSchema,
   pendingGoogleRegistrationSchema,
   registerRequestSchema,
-  schoolNameSchema,
   type PendingGoogleRegistration,
   type SchoolName,
 } from '@repo/shared/auth';
@@ -48,7 +46,7 @@ type AuthStore = {
   logout: () => Promise<void>;
 };
 
-const DEFAULT_SCHOOL = ALLOWED_SCHOOLS[0];
+const DEFAULT_SCHOOL = '';
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
   loginForm: {
@@ -71,22 +69,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
   setError: (error) => set({ error }),
   clearError: () => set({ error: '' }),
   setLoginField: (field, value) => {
-    if (field === 'schoolName') {
-      const parsedSchool = schoolNameSchema.safeParse(value);
-
-      if (!parsedSchool.success) {
-        return;
-      }
-
-      set((state) => ({
-        loginForm: {
-          ...state.loginForm,
-          schoolName: parsedSchool.data,
-        },
-      }));
-      return;
-    }
-
     set((state) => ({
       loginForm: {
         ...state.loginForm,
@@ -95,22 +77,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     }));
   },
   setRegisterField: (field, value) => {
-    if (field === 'schoolName') {
-      const parsedSchool = schoolNameSchema.safeParse(value);
-
-      if (!parsedSchool.success) {
-        return;
-      }
-
-      set((state) => ({
-        registerForm: {
-          ...state.registerForm,
-          schoolName: parsedSchool.data,
-        },
-      }));
-      return;
-    }
-
     set((state) => ({
       registerForm: {
         ...state.registerForm,
