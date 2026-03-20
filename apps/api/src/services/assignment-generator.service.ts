@@ -8,6 +8,7 @@ import { env } from '@/config/env';
 
 type OpenAICompatibleResponse = {
   choices?: Array<{
+    finish_reason?: string;
     message?: {
       content?: string | Array<{ type?: string; text?: string }>;
       reasoning_content?: string;
@@ -38,6 +39,8 @@ type RawAssignmentGeneratedDraft = {
     answer: string;
   }>;
 };
+
+const MISSING_ANSWER_PREFIX = '__MISSING_ANSWER__';
 
 function toInteger(value: unknown): number {
   if (typeof value === 'number') {
@@ -292,14 +295,15 @@ function parseRawDraft(input: unknown): RawAssignmentGeneratedDraft {
 
 function getLlmRequestPayload(
   input: AssignmentIntakeRequest,
-  options?: { useJsonResponseFormat?: boolean },
+  options?: { useJsonResponseFormat?: boolean; maxTokens?: number },
 ) {
   const useJsonResponseFormat = options?.useJsonResponseFormat ?? true;
+  const maxTokens = options?.maxTokens ?? 1800;
 
   return {
     model: env.llmModel,
     temperature: 0.2,
-    max_tokens: 1800,
+    max_tokens: maxTokens,
     ...(useJsonResponseFormat ? { response_format: { type: 'json_object' as const } } : {}),
     messages: [
       {
@@ -414,7 +418,7 @@ async function fetchLlmResponse(input: AssignmentIntakeRequest, signal: AbortSig
 async function fetchLlmResponseWithOptions(
   input: AssignmentIntakeRequest,
   signal: AbortSignal,
-  options?: { useJsonResponseFormat?: boolean },
+  options?: { useJsonResponseFormat?: boolean; maxTokens?: number },
 ) {
   const endpoint = `${env.llmApiBaseUrl}/chat/completions`;
   const payload = JSON.stringify(getLlmRequestPayload(input, options));
@@ -500,6 +504,20 @@ function parseLlmPayload(bodyText: string) {
   }
 }
 
+function getFinishReason(payload: OpenAICompatibleResponse | null): string {
+  const reason = payload?.choices?.[0]?.finish_reason;
+  return typeof reason === 'string' ? reason.trim().toLowerCase() : '';
+}
+
+function computeMaxTokens(input: AssignmentIntakeRequest): number {
+  const questionBudget = input.totals.totalQuestions * 160;
+  const answerBudget = input.totals.totalQuestions * 90;
+  const overhead = 700;
+  const computed = questionBudget + answerBudget + overhead;
+
+  return Math.max(1800, Math.min(6000, computed));
+}
+
 function validateAgainstInput(input: AssignmentIntakeRequest, draft: AssignmentGeneratedDraft) {
   const totalQuestions = draft.questions.length;
   const totalMarks = draft.questions.reduce((sum, question) => sum + question.marks, 0);
@@ -556,11 +574,212 @@ function buildMissingQuestionPrompt(
 }
 
 function buildMissingAnswer(
-  input: AssignmentIntakeRequest,
-  questionType: AssignmentGeneratedDraft['questions'][number]['type'],
+  _input: AssignmentIntakeRequest,
+  _questionType: AssignmentGeneratedDraft['questions'][number]['type'],
   questionId: number,
 ) {
-  return `Model did not return an answer for Q${questionId}. Provide a concise ${questionType.toLowerCase()} answer from chapter "${input.chapterName}".`;
+  return `${MISSING_ANSWER_PREFIX}:${questionId}`;
+}
+
+function isMissingAnswer(answer: string) {
+  return answer.startsWith(MISSING_ANSWER_PREFIX);
+}
+
+function getMissingAnswersPrompt(
+  input: AssignmentIntakeRequest,
+  missingQuestions: AssignmentGeneratedDraft['questions'],
+) {
+  return {
+    task: 'Provide concise answer key entries for missing assignment questions.',
+    language: 'English',
+    input: {
+      classLevel: input.classLevel,
+      subject: input.subject,
+      chapterName: input.chapterName,
+      additionalInfo: input.additionalInfo,
+      missingQuestions: missingQuestions.map((question) => ({
+        id: question.id,
+        type: question.type,
+        marks: question.marks,
+        prompt: question.prompt,
+      })),
+    },
+    rules: [
+      'Return valid JSON only.',
+      'Do not include markdown.',
+      'Return only the missing answers.',
+      'Each answer should be concise and exam-appropriate.',
+    ],
+    outputSchemaHint: {
+      answers: [{ questionId: 'number', answer: 'string' }],
+    },
+  };
+}
+
+function parseMissingAnswers(content: string) {
+  try {
+    const parsed = JSON.parse(content) as unknown;
+    if (!parsed || typeof parsed !== 'object') {
+      return new Map<number, string>();
+    }
+
+    const root = parsed as Record<string, unknown>;
+    const candidates = [root.answers, root.answerKey, root.answer_key];
+    const answerRows = candidates.find((value) => Array.isArray(value));
+    if (Array.isArray(answerRows)) {
+      const mapped = answerRows
+        .map((row) => {
+          if (!row || typeof row !== 'object') {
+            return null;
+          }
+
+          const record = row as Record<string, unknown>;
+          const questionId = toInteger(record.questionId ?? record.id ?? record.qid ?? record.question);
+          const answer = extractObjectString(record, ['answer', 'solution', 'text', 'expectedAnswer']);
+          if (!Number.isFinite(questionId) || !answer) {
+            return null;
+          }
+
+          return [questionId, answer] as const;
+        })
+        .filter((entry): entry is readonly [number, string] => entry !== null);
+
+      return new Map<number, string>(mapped);
+    }
+
+    const answerMapCandidate = [root.answers, root.answerKey, root.answer_key].find(
+      (value) => value && typeof value === 'object' && !Array.isArray(value),
+    ) as Record<string, unknown> | undefined;
+
+    if (answerMapCandidate) {
+      return new Map<number, string>(
+        Object.entries(answerMapCandidate)
+          .map(([key, value]) => {
+            const id = toInteger(key);
+            const answer = typeof value === 'string' ? value.trim() : '';
+            if (!Number.isFinite(id) || !answer) {
+              return null;
+            }
+            return [id, answer] as const;
+          })
+          .filter((entry): entry is readonly [number, string] => entry !== null),
+      );
+    }
+  } catch {
+    // Fall through to regex parse.
+  }
+
+  // Fallback for text responses such as: Q6: ...
+  const map = new Map<number, string>();
+  const lines = content.split(/\r?\n/);
+  for (const line of lines) {
+    const match = line.match(/^\s*Q?(\d+)\s*[:.-]\s*(.+)$/i);
+    if (!match) {
+      continue;
+    }
+
+    const id = toInteger(match[1]);
+    const answer = match[2]?.trim() || '';
+    if (Number.isFinite(id) && answer) {
+      map.set(id, answer);
+    }
+  }
+
+  return map;
+}
+
+async function fillMissingAnswersWithLlm(
+  input: AssignmentIntakeRequest,
+  draft: AssignmentGeneratedDraft,
+  signal: AbortSignal,
+) {
+  const missingQuestions = draft.questions.filter((question) => {
+    const currentAnswer = draft.answerKey.find((answer) => answer.questionId === question.id)?.answer || '';
+    return isMissingAnswer(currentAnswer);
+  });
+
+  if (missingQuestions.length === 0) {
+    return draft;
+  }
+
+  const payload = {
+    model: env.llmModel,
+    temperature: 0.1,
+    max_tokens: Math.min(2500, Math.max(700, missingQuestions.length * 180)),
+    response_format: { type: 'json_object' as const },
+    messages: [
+      {
+        role: 'system',
+        content: 'You are an expert teacher. Return only JSON with concise answer key entries.',
+      },
+      {
+        role: 'user',
+        content: JSON.stringify(getMissingAnswersPrompt(input, missingQuestions)),
+      },
+    ],
+  };
+
+  const endpoint = `${env.llmApiBaseUrl}/chat/completions`;
+  const requestInit: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${env.llmApiKey}`,
+    },
+    body: JSON.stringify(payload),
+    signal,
+  };
+
+  let response: Response;
+  try {
+    response = await fetch(endpoint, requestInit);
+  } catch {
+    return {
+      ...draft,
+      answerKey: draft.answerKey.map((answer) =>
+        isMissingAnswer(answer.answer)
+          ? {
+              ...answer,
+              answer: 'Answer not available.',
+            }
+          : answer,
+      ),
+    };
+  }
+
+  if (!response.ok) {
+    return {
+      ...draft,
+      answerKey: draft.answerKey.map((answer) =>
+        isMissingAnswer(answer.answer)
+          ? {
+              ...answer,
+              answer: 'Answer not available.',
+            }
+          : answer,
+      ),
+    };
+  }
+
+  const bodyText = await response.text();
+  const parsed = parseLlmPayload(bodyText);
+  const content = parsed.payload ? extractLlmContent(parsed.payload) : parsed.rawContent;
+  const answers = content ? parseMissingAnswers(content) : new Map<number, string>();
+
+  return {
+    ...draft,
+    answerKey: draft.answerKey.map((answer) => {
+      if (!isMissingAnswer(answer.answer)) {
+        return answer;
+      }
+
+      const filled = answers.get(answer.questionId)?.trim() || '';
+      return {
+        ...answer,
+        answer: filled || 'Answer not available.',
+      };
+    }),
+  };
 }
 
 function normalizeDraftAgainstInput(
@@ -718,6 +937,8 @@ function buildFallbackGeneratedContent(input: AssignmentIntakeRequest): Assignme
 async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<AssignmentGeneratedDraft> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Math.max(1000, env.llmTimeoutMs));
+  const initialMaxTokens = computeMaxTokens(input);
+  const retryMaxTokens = Math.min(7000, Math.floor(initialMaxTokens * 1.75));
 
   try {
     let response: Response;
@@ -725,6 +946,7 @@ async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<Assignme
     try {
       response = await fetchLlmResponseWithOptions(input, controller.signal, {
         useJsonResponseFormat: true,
+        maxTokens: initialMaxTokens,
       });
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -745,18 +967,20 @@ async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<Assignme
     const primaryParsed = parseLlmPayload(primaryBodyText);
     let payload = primaryParsed.payload;
     let content = payload ? extractLlmContent(payload) : primaryParsed.rawContent;
+    const primaryFinishReason = getFinishReason(payload);
 
-    if (!content) {
+    if (!content || primaryFinishReason === 'length') {
       const providerError = payload?.error?.message?.trim();
       if (providerError) {
         throw new Error(`LLM provider returned an error: ${providerError}`);
       }
 
-      // Retry once without strict JSON mode for models that return empty content in json_object mode.
+      // Retry once without strict JSON mode and with larger token budget.
       let retryResponse: Response;
       try {
         retryResponse = await fetchLlmResponseWithOptions(input, controller.signal, {
           useJsonResponseFormat: false,
+          maxTokens: retryMaxTokens,
         });
       } catch (retryError) {
         if (retryError instanceof Error && retryError.name === 'AbortError') {
@@ -779,6 +1003,7 @@ async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<Assignme
       const retryParsed = parseLlmPayload(retryBodyText);
       payload = retryParsed.payload;
       content = payload ? extractLlmContent(payload) : retryParsed.rawContent;
+      const retryFinishReason = getFinishReason(payload);
 
       if (!content) {
         const retryProviderError = payload?.error?.message?.trim();
@@ -790,12 +1015,26 @@ async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<Assignme
           'LLM response did not include content (no text in choices/message/response fields), including retry without json_object mode',
         );
       }
+
+      if (retryFinishReason === 'length') {
+        throw new Error(
+          `LLM output was truncated by token limit even after retry (max_tokens=${retryMaxTokens}). Reduce assignment size or use a larger/faster model.`,
+        );
+      }
     }
 
-    const parsedContent = JSON.parse(content) as unknown;
+    let parsedContent: unknown;
+    try {
+      parsedContent = JSON.parse(content) as unknown;
+    } catch {
+      throw new Error(
+        `LLM returned non-JSON or truncated JSON content (max_tokens=${initialMaxTokens}, finish_reason=${primaryFinishReason || 'unknown'}).`,
+      );
+    }
     const parsedDraft = parseRawDraft(parsedContent);
     const normalizedDraft = normalizeDraftAgainstInput(input, parsedDraft);
-    const strictDraft = assignmentGeneratedDraftSchema.safeParse(normalizedDraft);
+    const completedDraft = await fillMissingAnswersWithLlm(input, normalizedDraft, controller.signal);
+    const strictDraft = assignmentGeneratedDraftSchema.safeParse(completedDraft);
 
     if (!strictDraft.success) {
       throw new Error(
