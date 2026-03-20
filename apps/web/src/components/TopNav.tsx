@@ -32,6 +32,8 @@ function resolvePageName(pathname: string): string {
   if (pathname === '/my-library') return 'My Library';
   if (pathname === '/ai-teachers-toolkit') return "AI Teacher's Toolkit";
   if (pathname === '/admin/schools') return 'School Admin';
+  if (pathname === '/admin/schools/search') return 'School Search';
+  if (pathname.startsWith('/admin/schools/search/')) return 'School Details';
 
   const fallback = pathname.replace(/^\//, '').replace(/-/g, ' ').trim();
   if (!fallback) return 'Dashboard';

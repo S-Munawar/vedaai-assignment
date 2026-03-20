@@ -196,6 +196,9 @@ export default function Assignments() {
                     className="flex-1 text-left"
                   >
                     <h2 className="text-base font-semibold text-gray-900">{assignment.chapterName}</h2>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Class {assignment.classLevel || "-"} • {assignment.subject || "-"}
+                    </p>
                     <p className="mt-1 text-xs text-gray-500">Due: {assignment.dueDate}</p>
                     <p className="mt-1 text-xs text-gray-500">Created by: {assignment.createdBy.username}</p>
                     <p className="mt-2 text-sm text-gray-700">

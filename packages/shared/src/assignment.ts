@@ -9,6 +9,21 @@ export const QUESTION_TYPE_OPTIONS = [
   'Long Answer Questions',
 ] as const;
 
+export const CLASS_LEVEL_OPTIONS = [
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+  '10',
+  '11',
+  '12',
+] as const;
+
 export const ALLOWED_ASSIGNMENT_FILE_TYPES = [
   'image/jpeg',
   'image/png',
@@ -18,6 +33,7 @@ export const ALLOWED_ASSIGNMENT_FILE_TYPES = [
 export const MAX_ASSIGNMENT_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export const questionTypeOptionSchema = z.enum(QUESTION_TYPE_OPTIONS);
+export const classLevelOptionSchema = z.enum(CLASS_LEVEL_OPTIONS);
 export const mongoIdSchema = z.string().regex(/^[a-f\d]{24}$/i, 'Invalid id');
 
 export const assignmentQuestionRowSchema = z.object({
@@ -44,6 +60,8 @@ export const assignmentIntakeRequestSchema = z
     dueDate: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'Due date must be in YYYY-MM-DD format'),
+    classLevel: classLevelOptionSchema,
+    subject: z.string().trim().min(1, 'Subject is required'),
     chapterName: z.string().trim().min(1, 'Chapter Name is required'),
     additionalInfo: z.string().trim().max(2000).optional().default(''),
     questionTypes: z.array(assignmentQuestionRowSchema).min(1, 'At least one Question Type is required'),
@@ -83,6 +101,8 @@ export const assignmentIntakeSuccessResponseSchema = z.object({
   assignmentId: z.string(),
   receivedData: z.object({
     dueDate: z.string(),
+    classLevel: classLevelOptionSchema,
+    subject: z.string(),
     chapterName: z.string(),
     totalQuestions: z.number(),
     totalMarks: z.number(),
@@ -101,8 +121,29 @@ export const assignmentGeneratedContentSchema = z.object({
   body: z.string(),
 });
 
+export const assignmentGeneratedQuestionSchema = z.object({
+  id: z.number().int().positive(),
+  type: questionTypeOptionSchema,
+  marks: z.number().int().min(1),
+  prompt: z.string().trim().min(1),
+});
+
+export const assignmentGeneratedAnswerSchema = z.object({
+  questionId: z.number().int().positive(),
+  answer: z.string().trim().min(1),
+});
+
+export const assignmentGeneratedDraftSchema = z.object({
+  title: z.string().trim().min(1),
+  overview: z.string().trim().default(''),
+  questions: z.array(assignmentGeneratedQuestionSchema).min(1),
+  answerKey: z.array(assignmentGeneratedAnswerSchema).default([]),
+});
+
 export const assignmentListItemSchema = z.object({
   id: mongoIdSchema,
+  classLevel: z.string().default(''),
+  subject: z.string().default(''),
   chapterName: z.string(),
   dueDate: z.string(),
   totalQuestions: z.number().int().min(1),
@@ -117,6 +158,9 @@ export const assignmentListItemSchema = z.object({
 
 export const assignmentDetailsSchema = z.object({
   id: mongoIdSchema,
+  classLevel: z.string().default(''),
+  subject: z.string().default(''),
+  schoolName: z.string().default(''),
   chapterName: z.string(),
   dueDate: z.string(),
   additionalInfo: z.string(),
@@ -163,12 +207,16 @@ export const assignmentDeletedRealtimeEventSchema = z.object({
 });
 
 export type QuestionTypeOption = z.infer<typeof questionTypeOptionSchema>;
+export type ClassLevelOption = z.infer<typeof classLevelOptionSchema>;
 export type AssignmentQuestionRow = z.infer<typeof assignmentQuestionRowSchema>;
 export type AssignmentFileMeta = z.infer<typeof assignmentFileMetaSchema>;
 export type AssignmentIntakeRequest = z.infer<typeof assignmentIntakeRequestSchema>;
 export type AssignmentIntakeSuccessResponse = z.infer<typeof assignmentIntakeSuccessResponseSchema>;
 export type AssignmentIntakeErrorResponse = z.infer<typeof assignmentIntakeErrorResponseSchema>;
 export type AssignmentGeneratedContent = z.infer<typeof assignmentGeneratedContentSchema>;
+export type AssignmentGeneratedQuestion = z.infer<typeof assignmentGeneratedQuestionSchema>;
+export type AssignmentGeneratedAnswer = z.infer<typeof assignmentGeneratedAnswerSchema>;
+export type AssignmentGeneratedDraft = z.infer<typeof assignmentGeneratedDraftSchema>;
 export type AssignmentListItem = z.infer<typeof assignmentListItemSchema>;
 export type AssignmentDetails = z.infer<typeof assignmentDetailsSchema>;
 export type AssignmentListResponse = z.infer<typeof assignmentListResponseSchema>;

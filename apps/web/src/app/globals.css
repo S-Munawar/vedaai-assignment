@@ -22,6 +22,25 @@
 }
 
 @layer utilities {
+  .hide-datalist-indicator::-webkit-calendar-picker-indicator {
+    display: none !important;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .hide-datalist-indicator::-ms-expand {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
   .imgDark {
     display: none;
   }

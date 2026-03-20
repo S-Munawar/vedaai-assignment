@@ -6,6 +6,8 @@ export type QuestionRow = AssignmentQuestionRow;
 interface AssignmentStore {
   rows: QuestionRow[];
   additionalInfo: string;
+  subject: string;
+  classLevel: string;
   chapterName: string;
   dueDate: string;
   selectedFile: File | null;
@@ -17,6 +19,8 @@ interface AssignmentStore {
   removeRow: (id: number) => void;
   addQuestionType: () => void;
   setAdditionalInfo: (info: string) => void;
+  setSubject: (subject: string) => void;
+  setClassLevel: (classLevel: string) => void;
   setChapterName: (name: string) => void;
   setDueDate: (date: string) => void;
   setSelectedFile: (file: File | null) => void;
@@ -37,6 +41,8 @@ const getDefaultDate = (): string => new Date().toISOString().split("T")[0] ?? "
 export const useAssignmentStore = create<AssignmentStore>((set) => ({
   rows: INITIAL_ROWS,
   additionalInfo: "",
+  subject: "",
+  classLevel: "",
   chapterName: "",
   dueDate: getDefaultDate(),
   selectedFile: null,
@@ -79,6 +85,8 @@ export const useAssignmentStore = create<AssignmentStore>((set) => ({
   },
 
   setAdditionalInfo: (info: string) => set({ additionalInfo: info }),
+  setSubject: (subject: string) => set({ subject }),
+  setClassLevel: (classLevel: string) => set({ classLevel }),
   setChapterName: (name: string) => set({ chapterName: name }),
   setDueDate: (date: string) => set({ dueDate: date }),
   setSelectedFile: (file: File | null) => set({ selectedFile: file }),
@@ -89,6 +97,8 @@ export const useAssignmentStore = create<AssignmentStore>((set) => ({
     set({
       rows: INITIAL_ROWS,
       additionalInfo: "",
+      subject: "",
+      classLevel: "",
       chapterName: "",
       dueDate: getDefaultDate(),
       selectedFile: null,

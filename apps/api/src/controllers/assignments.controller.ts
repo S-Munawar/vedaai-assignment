@@ -3,6 +3,7 @@ import { Types } from 'mongoose';
 import { assignmentIntakeRequestSchema, mongoIdSchema } from '@repo/shared/assignment';
 import { AssignmentModel } from '@/models/assignment.model';
 import { UserModel } from '@/models/user.model';
+import { generateAssignmentFromLlm } from '@/services/assignment-generator.service';
 import { verifyAuthToken } from '@/services/auth-token.service';
 import {
   createAssignmentCreatedNotification,
@@ -24,6 +25,8 @@ type AssignmentCreator = {
 
 type AssignmentListDoc = {
   _id: Types.ObjectId;
+  classLevel: string;
+  subject: string;
   chapterName: string;
   dueDate: string;
   totals: {
@@ -37,6 +40,12 @@ type AssignmentListDoc = {
 
 type AssignmentDetailsDoc = {
   _id: Types.ObjectId;
+  classLevel?: string;
+  subject?: string;
+  school: Types.ObjectId | {
+    _id: Types.ObjectId;
+    name?: string;
+  };
   chapterName: string;
   dueDate: string;
   additionalInfo?: string;
@@ -54,7 +63,6 @@ type AssignmentDetailsDoc = {
     title: string;
     body: string;
   };
-  school: Types.ObjectId;
   createdBy: AssignmentCreator;
   createdAt: Date;
 };
@@ -102,21 +110,7 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
     }
 
     const payload = parsed.data;
-    const generatedContent = {
-      title: `${payload.chapterName} - Generated Assignment`,
-      body: [
-        `Chapter: ${payload.chapterName}`,
-        `Due Date: ${payload.dueDate}`,
-        `Total Questions: ${payload.totals.totalQuestions}`,
-        `Total Marks: ${payload.totals.totalMarks}`,
-        `Question Types: ${payload.questionTypes
-          .map((row) => `${row.type} (${row.questions} x ${row.marks})`)
-          .join(', ')}`,
-        payload.additionalInfo ? `Additional Info: ${payload.additionalInfo}` : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    };
+    const generatedContent = await generateAssignmentFromLlm(payload);
 
     const assignment = await AssignmentModel.create({
       ...payload,
@@ -129,6 +123,8 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
       type: 'assignment:created',
       assignment: {
         id: assignment._id.toString(),
+        classLevel: assignment.classLevel,
+        subject: assignment.subject,
         chapterName: assignment.chapterName,
         dueDate: assignment.dueDate,
         totalQuestions: payload.totals.totalQuestions,
@@ -164,10 +160,12 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
     
     return res.status(200).json({
       success: true,
-      message: 'Assignment data received and logged',
+      message: 'Assignment generated successfully',
       assignmentId: assignment._id.toString(),
       receivedData: {
         dueDate: payload.dueDate,
+        classLevel: payload.classLevel,
+        subject: payload.subject,
         chapterName: payload.chapterName,
         totalQuestions: payload.totals?.totalQuestions,
         totalMarks: payload.totals?.totalMarks,
@@ -176,6 +174,25 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
       },
     });
   } catch (error) {
+    // Check if error is from LLM generation
+    if (error instanceof Error && error.message.includes('LLM generation failed')) {
+      console.error('❌ LLM generation error:', error);
+      return res.status(503).json({
+        success: false,
+        error: error.message,
+        errorType: 'llm_generation_failed',
+      });
+    }
+    
+    if (error instanceof Error && error.message.includes('LLM API key not configured')) {
+      console.error('❌ LLM API key missing:', error);
+      return res.status(503).json({
+        success: false,
+        error: error.message,
+        errorType: 'llm_not_configured',
+      });
+    }
+
     console.error('❌ Error processing assignment intake:', error);
     return res.status(500).json({
       success: false,
@@ -194,13 +211,15 @@ export async function listAssignments(req: Request, res: Response) {
 
     const assignments = (await AssignmentModel.find({ school: user.school })
       .sort({ createdAt: -1 })
-      .select('_id chapterName dueDate totals questionTypes createdBy createdAt')
+      .select('_id classLevel subject chapterName dueDate totals questionTypes createdBy createdAt')
       .populate({ path: 'createdBy', select: '_id username' })) as unknown as AssignmentListDoc[];
 
     return res.json({
       success: true,
       assignments: assignments.map((assignment) => ({
         id: assignment._id.toString(),
+        classLevel: assignment.classLevel ?? '',
+        subject: assignment.subject ?? '',
         chapterName: assignment.chapterName,
         dueDate: assignment.dueDate,
         totalQuestions: assignment.totals.totalQuestions,
@@ -238,18 +257,32 @@ export async function getAssignmentById(req: Request, res: Response) {
       school: user.school,
     })
       .select(
-        '_id chapterName dueDate additionalInfo totals questionTypes file generatedContent school createdBy createdAt',
+        '_id classLevel subject chapterName dueDate additionalInfo totals questionTypes file generatedContent school createdBy createdAt',
       )
+      .populate({ path: 'school', select: '_id name' })
       .populate({ path: 'createdBy', select: '_id username' })) as unknown as AssignmentDetailsDoc | null;
 
     if (!assignment) {
       return res.status(404).json({ success: false, error: 'Assignment not found' });
     }
 
+    const resolvedSchoolId =
+      assignment.school instanceof Types.ObjectId
+        ? assignment.school.toString()
+        : assignment.school._id.toString();
+
+    const resolvedSchoolName =
+      assignment.school instanceof Types.ObjectId
+        ? ''
+        : (assignment.school.name ?? '');
+
     return res.json({
       success: true,
       assignment: {
         id: assignment._id.toString(),
+        classLevel: assignment.classLevel ?? '',
+        subject: assignment.subject ?? '',
+        schoolName: resolvedSchoolName,
         chapterName: assignment.chapterName,
         dueDate: assignment.dueDate,
         additionalInfo: assignment.additionalInfo ?? '',
@@ -257,7 +290,7 @@ export async function getAssignmentById(req: Request, res: Response) {
         questionTypes: assignment.questionTypes,
         file: assignment.file,
         generatedContent: assignment.generatedContent,
-        schoolId: assignment.school.toString(),
+        schoolId: resolvedSchoolId,
         createdBy: {
           id: assignment.createdBy._id.toString(),
           username: assignment.createdBy.username,

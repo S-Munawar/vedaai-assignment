@@ -16,6 +16,16 @@ const assignmentSchema = new Schema(
       type: String,
       required: true,
     },
+    classLevel: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    subject: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     chapterName: {
       type: String,
       required: true,

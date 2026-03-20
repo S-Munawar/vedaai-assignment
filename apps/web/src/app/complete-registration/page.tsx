@@ -2,14 +2,14 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
-import { listSchoolsResponseSchema, schoolsErrorResponseSchema } from '@repo/shared/schools';
+import { listSchoolsResponseSchema, schoolsErrorResponseSchema, type School } from '@repo/shared/schools';
 import { useAuth } from '@/hooks/useAuth';
 import { getApiUrl } from '@/lib/api-base';
 
-type SchoolOption = {
-  id: string;
-  name: string;
-};
+function getSchoolLabel(school: School) {
+  const city = school.location.city ? ` - ${school.location.city}` : '';
+  return `${school.name}${city} (${school.board})`;
+}
 
 export default function CompleteRegistrationPage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function CompleteRegistrationPage() {
 
   const pending = pendingGoogleRegistration;
   const schoolName = completeRegistrationForm.schoolName;
-  const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const [schoolOptions, setSchoolOptions] = useState<School[]>([]);
   const [schoolLoadError, setSchoolLoadError] = useState('');
 
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function CompleteRegistrationPage() {
             >
               {schoolOptions.map((school) => (
                 <option key={school.id} value={school.name}>
-                  {school.name}
+                  {getSchoolLabel(school)}
                 </option>
               ))}
             </select>

@@ -3,19 +3,19 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
-import { listSchoolsResponseSchema, schoolsErrorResponseSchema } from '@repo/shared/schools';
+import { listSchoolsResponseSchema, schoolsErrorResponseSchema, type School } from '@repo/shared/schools';
 import { useAuth } from '@/hooks/useAuth';
 import { getApiUrl } from '@/lib/api-base';
 
-type SchoolOption = {
-  id: string;
-  name: string;
-};
+function getSchoolLabel(school: School) {
+  const city = school.location.city ? ` - ${school.location.city}` : '';
+  return `${school.name}${city} (${school.board})`;
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
-  const [schoolOptions, setSchoolOptions] = useState<SchoolOption[]>([]);
+  const [schoolOptions, setSchoolOptions] = useState<School[]>([]);
   const [schoolLoadError, setSchoolLoadError] = useState('');
 
   useEffect(() => {
@@ -112,7 +112,7 @@ export default function LoginPage() {
             >
               {schoolOptions.map((school) => (
                 <option key={school.id} value={school.name}>
-                  {school.name}
+                  {getSchoolLabel(school)}
                 </option>
               ))}
             </select>

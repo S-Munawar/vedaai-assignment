@@ -13,4 +13,8 @@ export const env = {
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY || '',
   authCookieName: 'vedaai_auth_token',
   adminApiKey: process.env.ADMIN_API_KEY || 'dev-admin-key',
+  llmApiKey: process.env.LLM_API_KEY || '',
+  llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',
+  llmApiBaseUrl: process.env.LLM_API_BASE_URL || 'https://api.openai.com/v1',
+  llmTimeoutMs: Number(process.env.LLM_TIMEOUT_MS || 20000),
 };

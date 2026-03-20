@@ -157,9 +157,154 @@ export default function AssignmentDetailsPage() {
     };
   }, [assignmentId, loadAssignment]);
 
+  const renderPaperLine = (line: string, index: number) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      return <div key={`space-${index}`} className="h-3" />;
+    }
+
+    if (/^=+$/.test(trimmed)) {
+      return <hr key={`hr-${index}`} className="my-3 border-gray-300" />;
+    }
+
+    if (/^SECTION\s+[A-Z]+:/i.test(trimmed)) {
+      return (
+        <h4 key={`section-${index}`} className="mt-6 text-center text-base font-bold text-gray-900">
+          {trimmed}
+        </h4>
+      );
+    }
+
+    if (trimmed === "ANSWER KEY") {
+      return (
+        <h4 key={`answers-${index}`} className="mt-8 text-lg font-bold text-gray-900">
+          {trimmed}
+        </h4>
+      );
+    }
+
+    if (/^Q\d+\./.test(trimmed)) {
+      return (
+        <p key={`q-${index}`} className="mt-2 text-[13px] leading-relaxed text-gray-900">
+          {trimmed}
+        </p>
+      );
+    }
+
+    if (/^Q\d+:/.test(trimmed)) {
+      return (
+        <p key={`a-${index}`} className="mt-2 text-[13px] leading-relaxed text-gray-800">
+          {trimmed}
+        </p>
+      );
+    }
+
+    if (/^(Chapter|Due Date|Total Marks|Total Questions|OVERVIEW|INSTRUCTIONS):/i.test(trimmed)) {
+      return (
+        <p key={`meta-${index}`} className="text-[13px] font-semibold text-gray-800">
+          {trimmed}
+        </p>
+      );
+    }
+
+    return (
+      <p key={`line-${index}`} className="text-[13px] leading-relaxed text-gray-800">
+        {trimmed}
+      </p>
+    );
+  };
+
+  function calculateRecommendedTimeMinutes(details: AssignmentDetails): number {
+    const baseByType: Record<string, number> = {
+      "Multiple Choice Questions": 1.5,
+      "True/False Questions": 1,
+      "Short Questions": 3,
+      "Numerical Problems": 4,
+      "Diagram/Graph-Based Questions": 5,
+      "Long Answer Questions": 6,
+    };
+
+    const totalMinutes = details.questionTypes.reduce((sum, row) => {
+      const base = baseByType[row.type] ?? 2.5;
+      const perQuestion = base + row.marks * 1.1;
+      return sum + row.questions * perQuestion;
+    }, 0);
+
+    const rounded = Math.ceil(totalMinutes / 5) * 5;
+    return Math.max(30, rounded);
+  }
+
+  function formatMinutes(minutes: number): string {
+    if (minutes < 60) {
+      return `${minutes} minutes`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+
+    if (remainingMinutes === 0) {
+      return `${hours} hour${hours > 1 ? "s" : ""}`;
+    }
+
+    return `${hours} hour${hours > 1 ? "s" : ""} ${remainingMinutes} minutes`;
+  }
+
+  function resolveHeaderMeta(details: AssignmentDetails) {
+    const defaultTime = `Time Allowed: ${formatMinutes(calculateRecommendedTimeMinutes(details))}`;
+    const defaultInstruction = "All questions are compulsary unless stated otherwise.";
+
+    let timeLine = defaultTime;
+    let instructionLine = defaultInstruction;
+
+    const info = details.additionalInfo || "";
+    const lines = info
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    for (const line of lines) {
+      const explicitTime = line.match(/^time\s*(allowed)?\s*:\s*(.+)$/i);
+      if (explicitTime?.[2]) {
+        timeLine = `Time Allowed: ${explicitTime[2].trim()}`;
+        continue;
+      }
+
+      if (/^all\s+questions/i.test(line)) {
+        instructionLine = line;
+        continue;
+      }
+
+      const explicitInstruction = line.match(/^(instructions?|note)\s*:\s*(.+)$/i);
+      if (explicitInstruction?.[2]) {
+        instructionLine = explicitInstruction[2].trim();
+      }
+    }
+
+    if (timeLine === defaultTime) {
+      const inlineDuration = info.match(/(\d+)\s*(hours?|hrs?|minutes?|mins?)/i);
+      if (inlineDuration?.[1] && inlineDuration?.[2]) {
+        const value = Number(inlineDuration[1]);
+        const unitRaw = inlineDuration[2].toLowerCase();
+        const unit = unitRaw.startsWith("h") ? "hour" : "minute";
+        const label = value === 1 ? unit : `${unit}s`;
+        timeLine = `Time Allowed: ${value} ${label}`;
+      }
+    }
+
+    return {
+      schoolName: details.schoolName || "School",
+      subject: details.subject || "-",
+      classLevel: details.classLevel || "-",
+      maxMarks: details.totals.totalMarks,
+      timeLine,
+      instructionLine,
+    };
+  }
+
   return (
-    <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:p-8">
+    <section className="min-h-screen bg-[radial-gradient(circle_at_top,#eef2ff_0%,#f5f5f5_40%,#efefef_100%)] px-4 py-8 sm:px-8">
+      <div className="mx-auto max-w-5xl rounded-2xl border border-gray-300 bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Assignment</h1>
@@ -194,16 +339,40 @@ export default function AssignmentDetailsPage() {
 
         {!isLoading && !errorMessage && assignment ? (
           <div className="space-y-6">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-              <h2 className="text-lg font-semibold text-gray-900">{assignment.chapterName}</h2>
-              <p className="mt-1 text-sm text-gray-600">Due Date: {assignment.dueDate}</p>
-              <p className="text-sm text-gray-600">Created by: {assignment.createdBy.username}</p>
-              <p className="text-sm text-gray-600">
-                Totals: {assignment.totals.totalQuestions} questions, {assignment.totals.totalMarks} marks
-              </p>
-            </div>
+            {(() => {
+              const headerMeta = resolveHeaderMeta(assignment);
 
-            <div>
+              return (
+            <article className="mx-auto max-w-[820px] rounded-lg border-2 border-dashed border-sky-400 bg-[#fbfbfb] p-5 text-gray-900 sm:p-8">
+              <header className="text-center font-['Times_New_Roman',serif]">
+                <h2 className="text-[34px] font-semibold leading-tight">{headerMeta.schoolName}</h2>
+                <p className="mt-1 text-base font-semibold">Subject: {headerMeta.subject}</p>
+                <p className="text-base font-semibold">Class: {headerMeta.classLevel}</p>
+              </header>
+
+              <div className="mt-6 flex items-center justify-between text-[13px] font-semibold">
+                <span>{headerMeta.timeLine}</span>
+                <span>Maximum Marks: {headerMeta.maxMarks}</span>
+              </div>
+
+              <p className="mt-4 text-[13px] text-gray-800">{headerMeta.instructionLine}</p>
+
+              <div className="mt-5 space-y-1 text-[13px] text-gray-800">
+                <p>Name: ____________</p>
+                <p>Roll Number: ____________</p>
+                <p>Class: {headerMeta.classLevel} Section: ____________</p>
+              </div>
+
+              <div className="mt-8 font-['Times_New_Roman',serif]">
+                {assignment.generatedContent.body
+                  .split("\n")
+                  .map((line, index) => renderPaperLine(line, index))}
+              </div>
+            </article>
+              );
+            })()}
+
+            <aside className="rounded-lg border border-gray-200 bg-white p-4">
               <h3 className="text-sm font-semibold text-gray-900">Question Type Breakdown</h3>
               <div className="mt-2 space-y-2">
                 {assignment.questionTypes.map((row) => (
@@ -218,22 +387,7 @@ export default function AssignmentDetailsPage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900">Generated Assignment Content (Dummy)</h3>
-              <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                <p className="text-sm font-semibold text-gray-900">{assignment.generatedContent.title}</p>
-                <pre className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{assignment.generatedContent.body}</pre>
-              </div>
-            </div>
-
-            {assignment.additionalInfo ? (
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">Additional Information</h3>
-                <p className="mt-2 text-sm text-gray-700">{assignment.additionalInfo}</p>
-              </div>
-            ) : null}
+            </aside>
           </div>
         ) : null}
       </div>

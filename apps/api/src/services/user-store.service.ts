@@ -25,6 +25,11 @@ async function findSchoolByName(schoolName: SchoolName) {
   return SchoolModel.findOne({ normalizedName });
 }
 
+async function findActiveSchoolByName(schoolName: SchoolName) {
+  const normalizedName = normalizeSchoolName(schoolName);
+  return SchoolModel.findOne({ normalizedName, isActive: { $ne: false } });
+}
+
 async function findOrCreateSchoolByName(schoolName: SchoolName) {
   const trimmedName = schoolName.trim();
   const normalizedName = normalizeSchoolName(trimmedName);
@@ -56,7 +61,7 @@ async function findOrCreateSchoolByName(schoolName: SchoolName) {
 }
 
 async function findExistingSchoolOrThrow(schoolName: SchoolName) {
-  const school = await findSchoolByName(schoolName);
+  const school = await findActiveSchoolByName(schoolName);
 
   if (!school) {
     throw new Error('Selected school is not available. Please contact admin.');
@@ -113,7 +118,7 @@ export async function loginCredentialUser(input: {
   password: string;
   schoolName: SchoolName;
 }): Promise<UserRecord | null> {
-  const school = await findSchoolByName(input.schoolName);
+  const school = await findActiveSchoolByName(input.schoolName);
 
   if (!school) {
     return null;

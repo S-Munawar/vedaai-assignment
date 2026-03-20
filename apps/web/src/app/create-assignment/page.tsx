@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getApiUrl } from "@/lib/api-base";
 import {
@@ -57,6 +57,8 @@ export function AssignmentDetailsForm() {
   const {
     rows,
     additionalInfo,
+    subject,
+    classLevel,
     chapterName,
     dueDate,
     selectedFile,
@@ -66,6 +68,8 @@ export function AssignmentDetailsForm() {
     removeRow,
     addQuestionType,
     setAdditionalInfo,
+    setSubject,
+    setClassLevel,
     setChapterName,
     setDueDate,
     setSelectedFile,
@@ -75,6 +79,49 @@ export function AssignmentDetailsForm() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
+  const classDropdownRef = useRef<HTMLDivElement | null>(null);
+  const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
+
+  const classOptions = Array.from({ length: 12 }, (_, index) => String(index + 1));
+  const subjectOptions = [
+    "Physics",
+    "Chemistry",
+    "Biology",
+    "Mathematics",
+    "English",
+    "History",
+    "Geography",
+    "Computer Science",
+  ];
+
+  const chapterOptionsBySubject: Record<string, string[]> = {
+    physics: ["Motion", "Force and Laws of Motion", "Work and Energy", "Gravitation", "Light"],
+    chemistry: ["Matter in Our Surroundings", "Atoms and Molecules", "Structure of Atom", "Acids Bases and Salts", "Carbon and Its Compounds"],
+    biology: ["Cell", "Tissues", "Life Processes", "Control and Coordination", "Heredity and Evolution"],
+    mathematics: ["Number Systems", "Polynomials", "Linear Equations", "Triangles", "Statistics"],
+    english: ["Reading Comprehension", "Grammar", "Writing Skills", "Literature", "Poetry"],
+    history: ["The French Revolution", "Nationalism in Europe", "Print Culture", "India and the Contemporary World", "Nazism and the Rise of Hitler"],
+    geography: ["Resources and Development", "Forest and Wildlife", "Water Resources", "Agriculture", "Minerals and Energy Resources"],
+    "computer science": ["Computer Fundamentals", "Programming Basics", "Data Structures", "Database Concepts", "Networking"],
+  };
+
+  const chapterSuggestions = useMemo(() => {
+    const normalizedSubject = subject.trim().toLowerCase();
+
+    if (!normalizedSubject) {
+      return [] as string[];
+    }
+
+    if (chapterOptionsBySubject[normalizedSubject]) {
+      return chapterOptionsBySubject[normalizedSubject] ?? [];
+    }
+
+    const closestSubjectKey = Object.keys(chapterOptionsBySubject).find((subjectKey) =>
+      subjectKey.includes(normalizedSubject),
+    );
+
+    return closestSubjectKey ? (chapterOptionsBySubject[closestSubjectKey] ?? []) : [];
+  }, [subject]);
 
   const totalQuestions = useMemo(
     () => rows.reduce((sum, row) => sum + row.questions, 0),
@@ -90,9 +137,34 @@ export function AssignmentDetailsForm() {
     setSelectedFile(file);
   };
 
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (!classDropdownRef.current) {
+        return;
+      }
+
+      if (!classDropdownRef.current.contains(event.target as Node)) {
+        setIsClassDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitMessage("");
+
+    if (!classLevel) {
+      setSubmitMessage("❌ Please select class");
+      return;
+    }
+
+    if (!subject.trim()) {
+      setSubmitMessage("❌ Subject is required");
+      return;
+    }
 
     const fileMetaParsed = assignmentFileMetaSchema.safeParse(
       selectedFile
@@ -111,6 +183,8 @@ export function AssignmentDetailsForm() {
 
     const payloadCandidate = {
       dueDate,
+      classLevel,
+      subject,
       chapterName,
       additionalInfo,
       questionTypes: rows,
@@ -169,6 +243,18 @@ export function AssignmentDetailsForm() {
     }
   };
 
+  if (isSubmitting) {
+    return (
+      <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
+        <div className="mx-auto flex max-w-4xl flex-col items-center justify-center rounded-xl border border-gray-200 bg-white px-6 py-20 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:px-8">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" aria-hidden="true" />
+          <p className="mt-5 text-base font-semibold text-gray-900">Preparing your assignment...</p>
+          <p className="mt-2 text-sm text-gray-500">This may take a few seconds.</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
       <form
@@ -206,21 +292,82 @@ export function AssignmentDetailsForm() {
         <p className="mt-3 text-center text-xs text-gray-500">Upload images or PDF of your preferred document</p>
 
         <div className="mt-6">
-          <label htmlFor="chapterName" className="mb-2 block text-sm font-semibold text-gray-700">
-            Chapter Name
-          </label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
+          <div className="grid gap-2 sm:grid-cols-[0.8fr_1fr_1.4fr_auto]">
+            <p className="pl-1 text-sm font-semibold text-gray-700">Class</p>
+            <p className="pl-1 text-sm font-semibold text-gray-700">Subject</p>
+            <label htmlFor="chapterName" className="pl-1 text-sm font-semibold text-gray-700">
+              Chapter
+            </label>
+            <p className="pl-1 text-sm font-semibold text-gray-700">Date</p>
+
+            <div className="relative" ref={classDropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsClassDropdownOpen((value) => !value)}
+                className="flex h-11 w-full items-center justify-between rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700"
+                aria-expanded={isClassDropdownOpen}
+                aria-label="Select class"
+              >
+                <span>{classLevel ? `Class ${classLevel}` : "Class"}</span>
+                <ChevronDownIcon />
+              </button>
+
+              {isClassDropdownOpen ? (
+                <div className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg no-scrollbar">
+                  {classOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setClassLevel(option);
+                        setIsClassDropdownOpen(false);
+                      }}
+                      className={`block w-full px-4 py-2 text-left text-sm transition hover:bg-gray-100 ${
+                        classLevel === option ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700"
+                      }`}
+                    >
+                      Class {option}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="relative">
+              <input
+                type="text"
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                placeholder="Subject"
+                list="subject-options"
+                required
+                className="hide-datalist-indicator h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pr-12 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+              />
+              <datalist id="subject-options">
+                {subjectOptions.map((option) => (
+                  <option key={option} value={option} />
+                ))}
+              </datalist>
+            </div>
+
+            <div className="relative">
               <input
                 id="chapterName"
                 type="text"
                 value={chapterName}
                 onChange={(event) => setChapterName(event.target.value)}
-                placeholder="Choose a chapter"
+                placeholder="Chapter"
+                list="chapter-options"
                 required
-                className="h-11 w-full rounded-xl border border-gray-200 bg-white pr-12 pl-4 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
+                className="hide-datalist-indicator h-11 w-full rounded-xl border border-gray-200 bg-white pl-4 pr-12 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
               />
+              <datalist id="chapter-options">
+                {chapterSuggestions.map((chapter) => (
+                  <option key={chapter} value={chapter} />
+                ))}
+              </datalist>
             </div>
+
             <div className="relative">
               <input
                 ref={dateInputRef}
@@ -232,8 +379,8 @@ export function AssignmentDetailsForm() {
               <button
                 type="button"
                 onClick={() => dateInputRef.current?.showPicker()}
-                className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                aria-label="Due date"
+                className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white transition-colors hover:bg-gray-50 active:bg-gray-100"
+                aria-label="date"
               >
                 <CalendarIcon />
               </button>
