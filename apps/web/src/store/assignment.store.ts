@@ -1,33 +1,8 @@
 import { create } from "zustand";
-import { QUESTION_TYPE_OPTIONS, type AssignmentQuestionRow } from "@repo/shared/assignment";
+import { QUESTION_TYPE_OPTIONS } from "@repo/shared/assignment";
+import type { AssignmentStore, QuestionRow } from "@/types/assignment-store.types";
 
-export type QuestionRow = AssignmentQuestionRow;
-
-interface AssignmentStore {
-  rows: QuestionRow[];
-  additionalInfo: string;
-  subject: string;
-  classLevel: string;
-  chapterName: string;
-  dueDate: string;
-  selectedFile: File | null;
-  isSubmitting: boolean;
-  submitMessage: string;
-
-  // Actions
-  updateRow: (id: number, updates: Partial<QuestionRow>) => void;
-  removeRow: (id: number) => void;
-  addQuestionType: () => void;
-  setAdditionalInfo: (info: string) => void;
-  setSubject: (subject: string) => void;
-  setClassLevel: (classLevel: string) => void;
-  setChapterName: (name: string) => void;
-  setDueDate: (date: string) => void;
-  setSelectedFile: (file: File | null) => void;
-  setIsSubmitting: (submitting: boolean) => void;
-  setSubmitMessage: (message: string) => void;
-  resetForm: () => void;
-}
+export type { QuestionRow } from "@/types/assignment-store.types";
 
 const INITIAL_ROWS: QuestionRow[] = [
   { id: 1, type: "Multiple Choice Questions", questions: 4, marks: 1 },

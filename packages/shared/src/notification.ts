@@ -20,6 +20,20 @@ export const notificationsListResponseSchema = z.object({
   unreadCount: z.number().int().min(0),
 });
 
+export const markNotificationReadResponseSchema = z.object({
+  success: z.literal(true),
+  notificationId: mongoIdSchema,
+});
+
+export const deleteNotificationResponseSchema = z.object({
+  success: z.literal(true),
+  notificationId: mongoIdSchema,
+});
+
+export const clearNotificationsResponseSchema = z.object({
+  success: z.literal(true),
+});
+
 export const notificationCreatedRealtimeEventSchema = z.object({
   type: z.literal('notification:created'),
   notification: notificationItemSchema,
@@ -43,6 +57,9 @@ export const notificationsClearedRealtimeEventSchema = z.object({
 export type NotificationType = z.infer<typeof notificationTypeSchema>;
 export type NotificationItem = z.infer<typeof notificationItemSchema>;
 export type NotificationsListResponse = z.infer<typeof notificationsListResponseSchema>;
+export type MarkNotificationReadResponse = z.infer<typeof markNotificationReadResponseSchema>;
+export type DeleteNotificationResponse = z.infer<typeof deleteNotificationResponseSchema>;
+export type ClearNotificationsResponse = z.infer<typeof clearNotificationsResponseSchema>;
 export type NotificationCreatedRealtimeEvent = z.infer<typeof notificationCreatedRealtimeEventSchema>;
 export type NotificationDeletedRealtimeEvent = z.infer<typeof notificationDeletedRealtimeEventSchema>;
 export type NotificationReadRealtimeEvent = z.infer<typeof notificationReadRealtimeEventSchema>;

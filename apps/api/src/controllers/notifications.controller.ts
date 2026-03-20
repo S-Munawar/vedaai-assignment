@@ -1,6 +1,11 @@
 import type { Request, Response } from 'express';
-import { Types } from 'mongoose';
 import { mongoIdSchema } from '@repo/shared/assignment';
+import {
+  clearNotificationsResponseSchema,
+  deleteNotificationResponseSchema,
+  markNotificationReadResponseSchema,
+  notificationsListResponseSchema,
+} from '@repo/shared/notification';
 import { NotificationModel } from '@/models/notification.model';
 import { UserModel } from '@/models/user.model';
 import { verifyAuthToken } from '@/services/auth-token.service';
@@ -9,12 +14,8 @@ import {
   emitNotificationReadEvent,
   emitNotificationsClearedEvent,
 } from '@/socket/realtime.context';
+import type { AuthenticatedUser } from '@/types/notifications.types';
 import { parseCookie } from '@/utils/cookie.util';
-
-type AuthenticatedUser = {
-  _id: Types.ObjectId;
-  school: Types.ObjectId;
-};
 
 async function requireAuthenticatedUser(req: Request, res: Response): Promise<AuthenticatedUser | null> {
   const token = parseCookie(req.headers.cookie);
@@ -55,7 +56,7 @@ export async function listNotifications(req: Request, res: Response) {
 
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-    return res.json({
+    const responsePayload = notificationsListResponseSchema.parse({
       success: true,
       notifications: notifications.map((notification) => ({
         id: notification._id.toString(),
@@ -69,6 +70,8 @@ export async function listNotifications(req: Request, res: Response) {
       })),
       unreadCount,
     });
+
+    return res.json(responsePayload);
   } catch (error) {
     console.error('❌ Error listing notifications:', error);
     return res.status(500).json({ success: false, error: 'Failed to list notifications' });
@@ -108,7 +111,12 @@ export async function markNotificationAsRead(req: Request, res: Response) {
       notificationId: idParsed.data,
     });
 
-    return res.json({ success: true, notificationId: idParsed.data });
+    const responsePayload = markNotificationReadResponseSchema.parse({
+      success: true,
+      notificationId: idParsed.data,
+    });
+
+    return res.json(responsePayload);
   } catch (error) {
     console.error('❌ Error marking notification as read:', error);
     return res.status(500).json({ success: false, error: 'Failed to mark notification as read' });
@@ -145,7 +153,12 @@ export async function deleteNotification(req: Request, res: Response) {
       wasRead: notification.isRead,
     });
 
-    return res.json({ success: true, notificationId: idParsed.data });
+    const responsePayload = deleteNotificationResponseSchema.parse({
+      success: true,
+      notificationId: idParsed.data,
+    });
+
+    return res.json(responsePayload);
   } catch (error) {
     console.error('❌ Error deleting notification:', error);
     return res.status(500).json({ success: false, error: 'Failed to delete notification' });
@@ -167,7 +180,9 @@ export async function clearAllNotifications(req: Request, res: Response) {
       type: 'notifications:cleared',
     });
 
-    return res.json({ success: true });
+    const responsePayload = clearNotificationsResponseSchema.parse({ success: true });
+
+    return res.json(responsePayload);
   } catch (error) {
     console.error('❌ Error clearing notifications:', error);
     return res.status(500).json({ success: false, error: 'Failed to clear notifications' });

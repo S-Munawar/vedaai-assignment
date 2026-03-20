@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   assignmentCreatedRealtimeEventSchema,
+  deleteAssignmentResponseSchema,
   assignmentDeletedRealtimeEventSchema,
   assignmentDetailsResponseSchema,
   assignmentIntakeErrorResponseSchema,
@@ -90,6 +91,15 @@ export default function AssignmentDetailsPage() {
         const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
         const errorMsg = errorParsed.success ? errorParsed.data.error : "Failed to delete assignment";
         setErrorMessage(errorMsg);
+        setIsDeleting(false);
+        return;
+      }
+
+      const rawSuccess = await response.json().catch(() => null);
+      const parsedSuccess = deleteAssignmentResponseSchema.safeParse(rawSuccess);
+
+      if (!parsedSuccess.success) {
+        setErrorMessage("Unexpected response while deleting assignment");
         setIsDeleting(false);
         return;
       }

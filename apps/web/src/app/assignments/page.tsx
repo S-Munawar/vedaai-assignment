@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   assignmentCreatedRealtimeEventSchema,
+  deleteAssignmentResponseSchema,
   assignmentDeletedRealtimeEventSchema,
   assignmentIntakeErrorResponseSchema,
   assignmentListResponseSchema,
@@ -74,6 +75,19 @@ export default function Assignments() {
         const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
         const errorMsg = errorParsed.success ? errorParsed.data.error : "Failed to delete assignment";
         setErrorMessage(errorMsg);
+        setDeletingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(assignmentId);
+          return next;
+        });
+        return;
+      }
+
+      const rawSuccess = await response.json().catch(() => null);
+      const parsedSuccess = deleteAssignmentResponseSchema.safeParse(rawSuccess);
+
+      if (!parsedSuccess.success) {
+        setErrorMessage("Unexpected response while deleting assignment");
         setDeletingIds((prev) => {
           const next = new Set(prev);
           next.delete(assignmentId);

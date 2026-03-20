@@ -19,30 +19,7 @@ import {
   setUnreadCount,
   subscribeUnreadCount,
 } from '@/lib/notifications-unread';
-
-const HIDE_NAV_PREFIXES = ['/login', '/register', '/complete-registration'];
-
-function resolvePageName(pathname: string): string {
-  if (pathname === '/') return 'Home';
-  if (pathname === '/assignments') return 'Assignments';
-  if (pathname.startsWith('/assignments/')) return 'Assignment Details';
-  if (pathname === '/notifications') return 'Notifications';
-  if (pathname === '/create-assignment') return 'Create Assignment';
-  if (pathname === '/my-groups') return 'My Groups';
-  if (pathname === '/my-library') return 'My Library';
-  if (pathname === '/ai-teachers-toolkit') return "AI Teacher's Toolkit";
-  if (pathname === '/admin/schools') return 'School Admin';
-  if (pathname === '/admin/schools/search') return 'School Search';
-  if (pathname.startsWith('/admin/schools/search/')) return 'School Details';
-
-  const fallback = pathname.replace(/^\//, '').replace(/-/g, ' ').trim();
-  if (!fallback) return 'Dashboard';
-
-  return fallback
-    .split(' ')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
+import { isAuthPage, resolvePageName } from '@/constants/navigation.constants';
 
 function getInitials(user: AuthTokenPayload | null): string {
   const name = user?.username?.trim();
@@ -63,7 +40,7 @@ export default function TopNav() {
   const [unreadCount, setUnreadCountState] = useState(0);
   const [authUser, setAuthUser] = useState<AuthTokenPayload | null>(null);
 
-  const shouldHideNav = HIDE_NAV_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const shouldHideNav = isAuthPage(pathname);
   const pageName = useMemo(() => resolvePageName(pathname), [pathname]);
   const isBackDisabled = pathname === '/';
 

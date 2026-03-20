@@ -4,13 +4,9 @@ import { Server } from 'socket.io';
 import { env } from '@/config/env';
 import { UserModel } from '@/models/user.model';
 import { verifyAuthToken } from '@/services/auth-token.service';
+import type { SocketAuthContext } from '@/types/realtime.types';
 import { parseCookie } from '@/utils/cookie.util';
 import { getSchoolRoomName, getUserRoomName, setRealtimeServer } from '@/socket/realtime.context';
-
-type SocketAuthContext = {
-  userId: string;
-  schoolId: string;
-};
 
 function getTokenFromSocketRequest(request: IncomingMessage) {
   return parseCookie(request.headers.cookie);

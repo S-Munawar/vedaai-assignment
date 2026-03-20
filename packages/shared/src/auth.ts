@@ -40,6 +40,15 @@ export const authErrorResponseSchema = z.object({
   error: z.string(),
 });
 
+export const authLogoutSuccessResponseSchema = z.object({
+  success: z.literal(true),
+});
+
+export const authLogoutErrorResponseSchema = z.object({
+  success: z.literal(false).optional(),
+  error: z.string(),
+});
+
 export const authTokenPayloadSchema = z.object({
   sub: z.string(),
   username: z.string().optional(),
@@ -68,6 +77,8 @@ export type GoogleAuthRequest = z.infer<typeof googleAuthRequestSchema>;
 export type AuthUser = z.infer<typeof authUserSchema>;
 export type AuthSuccessResponse = z.infer<typeof authSuccessResponseSchema>;
 export type AuthErrorResponse = z.infer<typeof authErrorResponseSchema>;
+export type AuthLogoutSuccessResponse = z.infer<typeof authLogoutSuccessResponseSchema>;
+export type AuthLogoutErrorResponse = z.infer<typeof authLogoutErrorResponseSchema>;
 export type AuthTokenPayload = z.infer<typeof authTokenPayloadSchema>;
 export type AuthMeResponse = z.infer<typeof authMeResponseSchema>;
 export type PendingGoogleRegistration = z.infer<typeof pendingGoogleRegistrationSchema>;

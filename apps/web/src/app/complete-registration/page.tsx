@@ -2,14 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
-import { listSchoolsResponseSchema, schoolsErrorResponseSchema, type School } from '@repo/shared/schools';
+import { type School } from '@repo/shared/schools';
 import { useAuth } from '@/hooks/useAuth';
-import { getApiUrl } from '@/lib/api-base';
-
-function getSchoolLabel(school: School) {
-  const city = school.location.city ? ` - ${school.location.city}` : '';
-  return `${school.name}${city} (${school.board})`;
-}
+import { getSchoolLabel } from '@/constants/schools.constants';
+import { useSchools } from '@/hooks/useSchools';
 
 export default function CompleteRegistrationPage() {
   const router = useRouter();
@@ -26,49 +22,26 @@ export default function CompleteRegistrationPage() {
 
   const pending = pendingGoogleRegistration;
   const schoolName = completeRegistrationForm.schoolName;
-  const [schoolOptions, setSchoolOptions] = useState<School[]>([]);
-  const [schoolLoadError, setSchoolLoadError] = useState('');
+  const { schools, schoolError, loadSchools } = useSchools();
+  const [schoolOptions, setSchoolOptions] = useState<School[]>(schools);
 
   useEffect(() => {
     loadPendingGoogleRegistration();
   }, [loadPendingGoogleRegistration]);
 
   useEffect(() => {
-    async function loadSchools() {
-      setSchoolLoadError('');
+    async function hydrateSchools() {
+      const loadedSchools = await loadSchools();
+      setSchoolOptions(loadedSchools);
 
-      try {
-        const response = await fetch(getApiUrl('/schools'));
-
-        if (!response.ok) {
-          const rawError = await response.json().catch(() => null);
-          const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
-          setSchoolLoadError(parsedError.success ? parsedError.data.error : 'Failed to load schools');
-          return;
-        }
-
-        const raw = await response.json().catch(() => null);
-        const parsed = listSchoolsResponseSchema.safeParse(raw);
-
-        if (!parsed.success) {
-          setSchoolLoadError('Unexpected schools response');
-          return;
-        }
-
-        setSchoolOptions(parsed.data.schools);
-
-        const firstSchool = parsed.data.schools[0];
-
-        if (firstSchool) {
-          setCompleteSchoolName(firstSchool.name);
-        }
-      } catch {
-        setSchoolLoadError('Could not reach backend endpoint.');
+      const firstSchool = loadedSchools[0];
+      if (firstSchool) {
+        setCompleteSchoolName(firstSchool.name);
       }
     }
 
-    void loadSchools();
-  }, [setCompleteSchoolName]);
+    void hydrateSchools();
+  }, [loadSchools, setCompleteSchoolName]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -113,7 +86,7 @@ export default function CompleteRegistrationPage() {
                 </option>
               ))}
             </select>
-            {schoolLoadError ? <p className="mt-1 text-xs text-red-600">{schoolLoadError}</p> : null}
+            {schoolError ? <p className="mt-1 text-xs text-red-600">{schoolError}</p> : null}
           </div>
 
           {error ? <p className="text-sm text-red-600">{error}</p> : null}

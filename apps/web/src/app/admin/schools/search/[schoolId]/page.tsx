@@ -3,16 +3,13 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { schoolDetailsResponseSchema, schoolsErrorResponseSchema, type School } from "@repo/shared/schools";
-import { getApiUrl } from "@/lib/api-base";
+import { useSchools } from "@/hooks/useSchools";
 
 export default function AdminSchoolDetailsPage() {
   const params = useParams<{ schoolId: string }>();
   const schoolId = params.schoolId;
-
-  const [school, setSchool] = useState<School | null>(null);
+  const { selectedSchool: school, isLoadingSchoolDetails, schoolDetailsError, loadSchoolDetails } = useSchools();
   const [adminKey, setAdminKey] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   async function loadSchool() {
@@ -21,37 +18,21 @@ export default function AdminSchoolDetailsPage() {
       return;
     }
 
-    setIsLoading(true);
     setMessage("");
 
-    try {
-      const response = await fetch(getApiUrl(`/schools/${schoolId}`), {
-        method: "GET",
-        headers: adminKey ? { "x-admin-key": adminKey } : undefined,
-      });
+    const loadedSchool = await loadSchoolDetails(schoolId, { adminKey });
 
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
-        setMessage(parsedError.success ? `❌ ${parsedError.data.error}` : "❌ Failed to load school details");
-        return;
-      }
-
-      const raw = await response.json().catch(() => null);
-      const parsed = schoolDetailsResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        setMessage("❌ Unexpected school details response");
-        return;
-      }
-
-      setSchool(parsed.data.school);
+    if (loadedSchool) {
       setMessage("✅ School details loaded");
-    } catch {
-      setMessage("❌ Could not reach backend endpoint.");
-    } finally {
-      setIsLoading(false);
+      return;
     }
+
+    if (schoolDetailsError) {
+      setMessage(`❌ ${schoolDetailsError}`);
+      return;
+    }
+
+    setMessage("❌ Failed to load school details");
   }
 
   useEffect(() => {
@@ -86,10 +67,10 @@ export default function AdminSchoolDetailsPage() {
             <button
               type="button"
               onClick={() => void loadSchool()}
-              disabled={isLoading}
+              disabled={isLoadingSchoolDetails}
               className="mt-6 h-10 rounded-lg bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-500"
             >
-              {isLoading ? "Loading..." : "Reload"}
+              {isLoadingSchoolDetails ? "Loading..." : "Reload"}
             </button>
           </div>
 

@@ -1,135 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   notificationCreatedRealtimeEventSchema,
   notificationDeletedRealtimeEventSchema,
   notificationReadRealtimeEventSchema,
   notificationsClearedRealtimeEventSchema,
-  notificationsListResponseSchema,
-  type NotificationItem,
 } from "@repo/shared/notification";
-import { assignmentIntakeErrorResponseSchema } from "@repo/shared/assignment";
-import { getApiUrl } from "@/lib/api-base";
 import { setUnreadCount } from "@/lib/notifications-unread";
 import { getRealtimeSocket } from "@/lib/realtime";
+import { useNotifications } from "@/hooks/useNotifications";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
-
-  const loadNotifications = async () => {
-    setIsLoading(true);
-    setErrorMessage("");
-
-    try {
-      const response = await fetch(getApiUrl("/notifications"), {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
-        setErrorMessage(errorParsed.success ? errorParsed.data.error : "Failed to load notifications");
-        return;
-      }
-
-      const raw = await response.json().catch(() => null);
-      const parsed = notificationsListResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        setErrorMessage("Unexpected response while loading notifications");
-        return;
-      }
-
-      setNotifications(parsed.data.notifications);
-      setUnreadCount(parsed.data.unreadCount);
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const {
+    notifications,
+    isLoading,
+    errorMessage,
+    deletingIds,
+    realtimeStatus,
+    loadNotifications,
+    markAsRead,
+    deleteNotification,
+    clearAllNotifications,
+    setRealtimeStatus,
+    onRealtimeCreated,
+    onRealtimeDeleted,
+    onRealtimeRead,
+    onRealtimeCleared,
+  } = useNotifications();
 
   useEffect(() => {
     void loadNotifications();
   }, []);
-
-  const handleMarkAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(getApiUrl(`/notifications/${notificationId}/read`), {
-        method: "POST",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        setErrorMessage("Failed to mark notification as read");
-        return;
-      }
-
-      // Real-time event will handle the update
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-    }
-  };
-
-  const handleDeleteNotification = async (notificationId: string) => {
-    setDeletingIds((prev) => new Set(prev).add(notificationId));
-
-    try {
-      const response = await fetch(getApiUrl(`/notifications/${notificationId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
-        setErrorMessage(errorParsed.success ? errorParsed.data.error : "Failed to delete notification");
-        setDeletingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(notificationId);
-          return next;
-        });
-        return;
-      }
-
-      // Real-time event will handle removal
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(notificationId);
-        return next;
-      });
-    }
-  };
 
   const handleClearAll = async () => {
     if (!confirm("Are you sure you want to clear all notifications?")) {
       return;
     }
 
-    try {
-      const response = await fetch(getApiUrl("/notifications"), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        setErrorMessage("Failed to clear notifications");
-        return;
-      }
-
-      // Real-time event will handle clearing
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-    }
+    await clearAllNotifications();
   };
 
   useEffect(() => {
@@ -149,13 +59,7 @@ export default function NotificationsPage() {
         return;
       }
 
-      setNotifications((prev) => {
-        if (prev.some((item) => item.id === parsed.data.notification.id)) {
-          return prev;
-        }
-
-        return [parsed.data.notification, ...prev];
-      });
+      onRealtimeCreated(parsed.data.notification);
     };
 
     const onNotificationDeleted = (payload: unknown) => {
@@ -165,12 +69,7 @@ export default function NotificationsPage() {
         return;
       }
 
-      setNotifications((prev) => prev.filter((n) => n.id !== parsed.data.notificationId));
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(parsed.data.notificationId);
-        return next;
-      });
+      onRealtimeDeleted(parsed.data.notificationId);
     };
 
     const onNotificationRead = (payload: unknown) => {
@@ -180,15 +79,17 @@ export default function NotificationsPage() {
         return;
       }
 
-      setNotifications((prev) =>
-        prev.map((n) =>
-          n.id === parsed.data.notificationId ? { ...n, isRead: true } : n,
-        ),
-      );
+      onRealtimeRead(parsed.data.notificationId);
     };
 
-    const onNotificationsCleared = () => {
-      setNotifications([]);
+    const onNotificationsCleared = (payload: unknown) => {
+      const parsed = notificationsClearedRealtimeEventSchema.safeParse(payload);
+
+      if (!parsed.success) {
+        return;
+      }
+
+      onRealtimeCleared();
     };
 
     const onConnect = () => setRealtimeStatus("connected");
@@ -270,39 +171,31 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 className={`rounded-lg border p-4 ${
-                  notification.isRead
-                    ? "border-gray-200 bg-gray-50"
-                    : "border-blue-200 bg-blue-50"
+                  notification.isRead ? "border-gray-200 bg-gray-50" : "border-blue-200 bg-blue-50"
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900">
-                        {notification.title}
-                      </h3>
-                      {!notification.isRead && (
-                        <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>
-                      )}
+                      <h3 className="text-sm font-semibold text-gray-900">{notification.title}</h3>
+                      {!notification.isRead && <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>}
                     </div>
                     <p className="mt-1 text-sm text-gray-700">{notification.message}</p>
-                    <p className="mt-2 text-xs text-gray-500">
-                      {new Date(notification.createdAt).toLocaleString()}
-                    </p>
+                    <p className="mt-2 text-xs text-gray-500">{new Date(notification.createdAt).toLocaleString()}</p>
                   </div>
                   <div className="flex flex-shrink-0 gap-2">
                     {!notification.isRead && (
                       <button
-                        onClick={() => void handleMarkAsRead(notification.id)}
+                        onClick={() => void markAsRead(notification.id)}
                         className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100"
                       >
                         Read
                       </button>
                     )}
                     <button
-                      onClick={() => void handleDeleteNotification(notification.id)}
+                      onClick={() => void deleteNotification(notification.id)}
                       disabled={deletingIds.has(notification.id)}
-                      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {deletingIds.has(notification.id) ? "Deleting..." : "Delete"}
                     </button>

@@ -3,48 +3,18 @@
 import { signInWithPopup } from 'firebase/auth';
 import { create } from 'zustand';
 import {
+  authLogoutErrorResponseSchema,
+  authLogoutSuccessResponseSchema,
   authErrorResponseSchema,
   authSuccessResponseSchema,
   googleAuthRequestSchema,
   loginRequestSchema,
   pendingGoogleRegistrationSchema,
   registerRequestSchema,
-  type PendingGoogleRegistration,
-  type SchoolName,
 } from '@repo/shared/auth';
 import { getApiUrl } from '@/lib/api-base';
 import { getFirebaseAuthClient, getGoogleProvider } from '@/lib/firebase';
-
-type AuthStore = {
-  loginForm: {
-    username: string;
-    schoolName: SchoolName;
-    password: string;
-  };
-  registerForm: {
-    username: string;
-    schoolName: SchoolName;
-    password: string;
-  };
-  completeRegistrationForm: {
-    schoolName: SchoolName;
-  };
-  pendingGoogleRegistration: PendingGoogleRegistration | null;
-  error: string;
-  isSubmitting: boolean;
-  isLoggingOut: boolean;
-  setError: (error: string) => void;
-  clearError: () => void;
-  setLoginField: (field: 'username' | 'password' | 'schoolName', value: string) => void;
-  setRegisterField: (field: 'username' | 'password' | 'schoolName', value: string) => void;
-  setCompleteSchoolName: (schoolName: SchoolName) => void;
-  loadPendingGoogleRegistration: () => void;
-  login: () => Promise<boolean>;
-  register: () => Promise<boolean>;
-  startGoogleRegistration: () => Promise<boolean>;
-  completeGoogleRegistration: () => Promise<boolean>;
-  logout: () => Promise<void>;
-};
+import type { AuthStore } from '@/types/auth-store.types';
 
 const DEFAULT_SCHOOL = '';
 
@@ -286,10 +256,25 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     set({ isLoggingOut: true });
 
     try {
-      await fetch(getApiUrl('/auth/logout'), {
+      const response = await fetch(getApiUrl('/auth/logout'), {
         method: 'POST',
         credentials: 'include',
       });
+
+      if (!response.ok) {
+        const rawError = await response.json().catch(() => null);
+        const parsedError = authLogoutErrorResponseSchema.safeParse(rawError);
+        set({ error: parsedError.success ? parsedError.data.error : 'Logout failed' });
+        return;
+      }
+
+      const rawSuccess = await response.json().catch(() => null);
+      const parsedSuccess = authLogoutSuccessResponseSchema.safeParse(rawSuccess);
+
+      if (!parsedSuccess.success) {
+        set({ error: 'Unexpected logout response' });
+        return;
+      }
     } finally {
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('pendingGoogleRegistration');

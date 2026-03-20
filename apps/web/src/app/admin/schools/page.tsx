@@ -8,32 +8,11 @@ import {
   schoolBoardOptions,
   schoolMediumOptions,
   schoolTypeOptions,
-  listSchoolsResponseSchema,
   schoolsErrorResponseSchema,
-  type School,
 } from "@repo/shared/schools";
 import { getApiUrl } from "@/lib/api-base";
-
-type AdminSchoolForm = {
-  name: string;
-  board: (typeof schoolBoardOptions)[number];
-  medium: (typeof schoolMediumOptions)[number];
-  schoolType: (typeof schoolTypeOptions)[number];
-  location: {
-    addressLine: string;
-    city: string;
-    state: string;
-    country: string;
-    postalCode: string;
-  };
-  contactEmail: string;
-  contactPhone: string;
-  website: string;
-  principalName: string;
-  establishedYear: string;
-  description: string;
-  isActive: boolean;
-};
+import { useSchools } from "@/hooks/useSchools";
+import type { AdminSchoolForm } from "@/types/admin-school.types";
 
 const INITIAL_FORM: AdminSchoolForm = {
   name: "",
@@ -57,12 +36,11 @@ const INITIAL_FORM: AdminSchoolForm = {
 };
 
 export default function AdminSchoolsPage() {
-  const [schools, setSchools] = useState<School[]>([]);
+  const { loadSchools, schoolError } = useSchools();
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [adminKey, setAdminKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [isLoadingSchools, setIsLoadingSchools] = useState(true);
 
   function updateField<K extends keyof AdminSchoolForm>(key: K, value: AdminSchoolForm[K]) {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -81,39 +59,9 @@ export default function AdminSchoolsPage() {
     }));
   }
 
-  async function loadSchools() {
-    setIsLoadingSchools(true);
-
-    try {
-      const response = await fetch(getApiUrl("/schools"), {
-        method: "GET",
-        headers: adminKey ? { "x-admin-key": adminKey } : undefined,
-      });
-
-      if (!response.ok) {
-        setMessage("❌ Could not load schools.");
-        return;
-      }
-
-      const raw = await response.json().catch(() => null);
-      const parsed = listSchoolsResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        setMessage("❌ Unexpected schools response.");
-        return;
-      }
-
-      setSchools(parsed.data.schools);
-    } catch {
-      setMessage("❌ Could not reach backend endpoint.");
-    } finally {
-      setIsLoadingSchools(false);
-    }
-  }
-
   useEffect(() => {
     void loadSchools();
-  }, []);
+  }, [loadSchools]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -161,7 +109,7 @@ export default function AdminSchoolsPage() {
 
       setMessage(`✅ School created: ${parsed.data.school.name}`);
       setFormData(INITIAL_FORM);
-      await loadSchools();
+      await loadSchools({ adminKey });
     } catch {
       setMessage("❌ Could not reach backend endpoint.");
     } finally {
@@ -387,6 +335,7 @@ export default function AdminSchoolsPage() {
           {message ? (
             <p className={`text-sm ${message.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>
           ) : null}
+          {schoolError && !message ? <p className="text-sm text-red-600">❌ {schoolError}</p> : null}
 
           <button
             type="submit"

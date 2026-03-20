@@ -1,20 +1,8 @@
 import bcrypt from 'bcryptjs';
 import { type SchoolName, type UserRecord } from '@/models/auth.model';
 import { SchoolModel } from '@/models/school.model';
+import { type SchoolLike, type UserRecordLike } from '@/types/user-store.types';
 import { UserModel } from '@/models/user.model';
-
-type UserRecordLike = {
-  _id: { toString(): string };
-  username: string;
-  email?: string | null;
-  passwordHash?: string | null;
-  provider: UserRecord['provider'];
-};
-
-type SchoolLike = {
-  _id: { toString(): string };
-  name: string;
-};
 
 function normalizeSchoolName(schoolName: string): string {
   return schoolName.trim().toLowerCase().replace(/\s+/g, ' ');

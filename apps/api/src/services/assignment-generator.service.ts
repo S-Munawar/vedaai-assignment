@@ -5,42 +5,24 @@ import {
   type AssignmentIntakeRequest,
 } from '@repo/shared/assignment';
 import { env } from '@/config/env';
-
-type OpenAICompatibleResponse = {
-  choices?: Array<{
-    finish_reason?: string;
-    message?: {
-      content?: string | Array<{ type?: string; text?: string }>;
-      reasoning_content?: string;
-    };
-    text?: string;
-  }>;
-  message?: {
-    content?: string | Array<{ type?: string; text?: string }>;
-  };
-  response?: string;
-  output_text?: string;
-  error?: {
-    message?: string;
-  };
-};
-
-type RawAssignmentGeneratedDraft = {
-  title: string;
-  overview: string;
-  questions: Array<{
-    id: number;
-    type: string;
-    marks: number;
-    prompt: string;
-  }>;
-  answerKey: Array<{
-    questionId: number;
-    answer: string;
-  }>;
-};
-
-const MISSING_ANSWER_PREFIX = '__MISSING_ANSWER__';
+import {
+  ASSIGNMENT_PROMPT_FORMAT_HINT,
+  ASSIGNMENT_PROMPT_RULES,
+  LLM_DEFAULT_MAX_TOKENS,
+  LLM_MAX_TOKEN_CAP,
+  LLM_REQUEST_SYSTEM_PROMPT,
+  LLM_RETRY_TOKEN_CAP,
+  MISSING_ANSWERS_PROMPT_RULES,
+  MISSING_ANSWERS_SYSTEM_PROMPT,
+  MISSING_ANSWER_FALLBACK,
+  MISSING_ANSWER_PREFIX,
+} from '@/constants/assignment-generator.constants';
+import {
+  llmProviderPayloadSchema,
+  type LlmContent,
+  type OpenAICompatibleResponse,
+  type RawAssignmentGeneratedDraft,
+} from '@/types/assignment-generator.types';
 
 function toInteger(value: unknown): number {
   if (typeof value === 'number') {
@@ -208,9 +190,10 @@ function parseRawDraft(input: unknown): RawAssignmentGeneratedDraft {
     throw new Error('LLM draft missing questions');
   }
 
-  const questions = rawQuestions.map((question, index) => {
+  const questions = rawQuestions
+    .map((question, index) => {
     if (!question || typeof question !== 'object') {
-      throw new Error(`Invalid question at index ${index}`);
+      return null;
     }
 
     const row = question as Record<string, unknown>;
@@ -223,17 +206,23 @@ function parseRawDraft(input: unknown): RawAssignmentGeneratedDraft {
     const prompt = extractObjectString(row, ['prompt', 'question', 'text', 'questionText']);
 
     if (!prompt) {
-      throw new Error(`Invalid question prompt at index ${index}`);
+      return null;
     }
 
     return { id, type, marks, prompt };
-  });
+  })
+  .filter((question): question is RawAssignmentGeneratedDraft['questions'][number] => question !== null);
+
+  if (questions.length === 0) {
+    throw new Error('LLM draft missing questions');
+  }
 
   const rawAnswerRows = extractAnswerRows(draft);
 
-  const parsedAnswerKey = rawAnswerRows.map((answerRow, index) => {
+  const parsedAnswerKey = rawAnswerRows
+    .map((answerRow) => {
     if (!answerRow || typeof answerRow !== 'object') {
-      throw new Error(`Invalid answer at index ${index}`);
+      return null;
     }
 
     const row = answerRow as Record<string, unknown>;
@@ -246,16 +235,13 @@ function parseRawDraft(input: unknown): RawAssignmentGeneratedDraft {
       'text',
     ]);
 
-    if (!Number.isFinite(questionId) || questionId <= 0 || !Number.isInteger(questionId)) {
-      throw new Error(`Invalid answer questionId at index ${index}`);
-    }
-
-    if (!answer) {
-      throw new Error(`Invalid answer text at index ${index}`);
+    if (!Number.isFinite(questionId) || questionId <= 0 || !Number.isInteger(questionId) || !answer) {
+      return null;
     }
 
     return { questionId, answer };
-  });
+  })
+  .filter((answer): answer is RawAssignmentGeneratedDraft['answerKey'][number] => answer !== null);
 
   // Some models attach answer text directly on each question row.
   const fallbackAnswerKey = questions
@@ -298,7 +284,7 @@ function getLlmRequestPayload(
   options?: { useJsonResponseFormat?: boolean; maxTokens?: number },
 ) {
   const useJsonResponseFormat = options?.useJsonResponseFormat ?? true;
-  const maxTokens = options?.maxTokens ?? 1800;
+  const maxTokens = options?.maxTokens ?? LLM_DEFAULT_MAX_TOKENS;
 
   return {
     model: env.llmModel,
@@ -308,8 +294,7 @@ function getLlmRequestPayload(
     messages: [
       {
         role: 'system',
-        content:
-          'You are an expert school assessment generator. Return only strict JSON that matches the user-provided schema hints and constraints.',
+        content: LLM_REQUEST_SYSTEM_PROMPT,
       },
       {
         role: 'user',
@@ -335,9 +320,7 @@ function getNetworkErrorDetails(error: unknown): string {
   return error.message;
 }
 
-function normalizeMessageContent(
-  value: string | Array<{ type?: string; text?: string }> | undefined,
-): string {
+function normalizeMessageContent(value: LlmContent | undefined): string {
   if (typeof value === 'string') {
     return value.trim();
   }
@@ -462,18 +445,8 @@ function buildPrompt(input: AssignmentIntakeRequest) {
       totals: input.totals,
       questionTypes: input.questionTypes,
     },
-    rules: [
-      'Return valid JSON only. No markdown or extra text.',
-      'questions array length must equal totals.totalQuestions.',
-      'Sum of question marks must equal totals.totalMarks.',
-      'Use only allowed question types from input.questionTypes.',
-      'Each generated question must include: id, type, marks, prompt.',
-      'id values must start from 1 and increment by 1.',
-      'Questions with the same type should be sequential (group by type).',
-      'answerKey should include concise answers using questionId, in the same order as questions.',
-      'title should be clear and exam-ready.',
-    ],
-    formatHint: 'The formatted assignment will have: (1) Metadata at top (title, chapter, due date, marks), (2) Sections grouped by question type (Section A, B, C for different types), (3) Answer key at end in the same order as questions.',
+    rules: ASSIGNMENT_PROMPT_RULES,
+    formatHint: ASSIGNMENT_PROMPT_FORMAT_HINT,
     outputSchemaHint: {
       title: 'string',
       overview: 'string',
@@ -490,7 +463,17 @@ function parseLlmPayload(bodyText: string) {
   }
 
   try {
-    const payload = JSON.parse(trimmed) as OpenAICompatibleResponse;
+    const payloadCandidate = JSON.parse(trimmed) as unknown;
+    const payloadParsed = llmProviderPayloadSchema.safeParse(payloadCandidate);
+    const payload = payloadParsed.success ? payloadParsed.data : null;
+
+    if (!payload) {
+      return {
+        payload: null as OpenAICompatibleResponse | null,
+        rawContent: trimmed,
+      };
+    }
+
     return {
       payload,
       rawContent: '',
@@ -515,7 +498,7 @@ function computeMaxTokens(input: AssignmentIntakeRequest): number {
   const overhead = 700;
   const computed = questionBudget + answerBudget + overhead;
 
-  return Math.max(1800, Math.min(6000, computed));
+  return Math.max(LLM_DEFAULT_MAX_TOKENS, Math.min(LLM_MAX_TOKEN_CAP, computed));
 }
 
 function validateAgainstInput(input: AssignmentIntakeRequest, draft: AssignmentGeneratedDraft) {
@@ -604,12 +587,7 @@ function getMissingAnswersPrompt(
         prompt: question.prompt,
       })),
     },
-    rules: [
-      'Return valid JSON only.',
-      'Do not include markdown.',
-      'Return only the missing answers.',
-      'Each answer should be concise and exam-appropriate.',
-    ],
+    rules: MISSING_ANSWERS_PROMPT_RULES,
     outputSchemaHint: {
       answers: [{ questionId: 'number', answer: 'string' }],
     },
@@ -710,7 +688,7 @@ async function fillMissingAnswersWithLlm(
     messages: [
       {
         role: 'system',
-        content: 'You are an expert teacher. Return only JSON with concise answer key entries.',
+        content: MISSING_ANSWERS_SYSTEM_PROMPT,
       },
       {
         role: 'user',
@@ -740,7 +718,7 @@ async function fillMissingAnswersWithLlm(
         isMissingAnswer(answer.answer)
           ? {
               ...answer,
-              answer: 'Answer not available.',
+              answer: MISSING_ANSWER_FALLBACK,
             }
           : answer,
       ),
@@ -754,7 +732,7 @@ async function fillMissingAnswersWithLlm(
         isMissingAnswer(answer.answer)
           ? {
               ...answer,
-              answer: 'Answer not available.',
+              answer: MISSING_ANSWER_FALLBACK,
             }
           : answer,
       ),
@@ -776,7 +754,7 @@ async function fillMissingAnswersWithLlm(
       const filled = answers.get(answer.questionId)?.trim() || '';
       return {
         ...answer,
-        answer: filled || 'Answer not available.',
+        answer: filled || MISSING_ANSWER_FALLBACK,
       };
     }),
   };
@@ -938,7 +916,7 @@ async function requestLlmDraft(input: AssignmentIntakeRequest): Promise<Assignme
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), Math.max(1000, env.llmTimeoutMs));
   const initialMaxTokens = computeMaxTokens(input);
-  const retryMaxTokens = Math.min(7000, Math.floor(initialMaxTokens * 1.75));
+  const retryMaxTokens = Math.min(LLM_RETRY_TOKEN_CAP, Math.floor(initialMaxTokens * 1.75));
 
   try {
     let response: Response;

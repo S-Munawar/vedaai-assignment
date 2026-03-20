@@ -3,13 +3,11 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
-  listSchoolsResponseSchema,
-  schoolsErrorResponseSchema,
   schoolBoardOptions,
   schoolMediumOptions,
   type School,
 } from "@repo/shared/schools";
-import { getApiUrl } from "@/lib/api-base";
+import { useSchools } from "@/hooks/useSchools";
 
 function schoolSearchText(school: School) {
   return [
@@ -33,14 +31,12 @@ function schoolSearchText(school: School) {
 }
 
 export default function AdminSchoolSearchPage() {
+  const { schools, isLoadingSchools, schoolError, loadSchools: loadSchoolsAction } = useSchools();
   const [adminKey, setAdminKey] = useState("");
-  const [schools, setSchools] = useState<School[]>([]);
   const [query, setQuery] = useState("");
   const [boardFilter, setBoardFilter] = useState<string>("all");
   const [mediumFilter, setMediumFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
-  const [isLoading, setIsLoading] = useState(false);
-  const [message, setMessage] = useState("");
 
   const filteredSchools = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -70,38 +66,8 @@ export default function AdminSchoolSearchPage() {
     });
   }, [schools, query, boardFilter, mediumFilter, activeFilter]);
 
-  async function loadSchools() {
-    setIsLoading(true);
-    setMessage("");
-
-    try {
-      const response = await fetch(getApiUrl("/schools"), {
-        method: "GET",
-        headers: adminKey ? { "x-admin-key": adminKey } : undefined,
-      });
-
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
-        setMessage(parsedError.success ? `❌ ${parsedError.data.error}` : "❌ Failed to load schools");
-        return;
-      }
-
-      const raw = await response.json().catch(() => null);
-      const parsed = listSchoolsResponseSchema.safeParse(raw);
-
-      if (!parsed.success) {
-        setMessage("❌ Unexpected schools response");
-        return;
-      }
-
-      setSchools(parsed.data.schools);
-      setMessage(`✅ Loaded ${parsed.data.schools.length} schools`);
-    } catch {
-      setMessage("❌ Could not reach backend endpoint.");
-    } finally {
-      setIsLoading(false);
-    }
+  async function handleLoadSchools() {
+    await loadSchoolsAction({ adminKey });
   }
 
   return (
@@ -133,11 +99,11 @@ export default function AdminSchoolSearchPage() {
             </div>
             <button
               type="button"
-              onClick={() => void loadSchools()}
-              disabled={isLoading}
+              onClick={() => void handleLoadSchools()}
+              disabled={isLoadingSchools}
               className="mt-6 h-10 rounded-lg bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-500"
             >
-              {isLoading ? "Loading..." : "Load Schools"}
+              {isLoadingSchools ? "Loading..." : "Load Schools"}
             </button>
           </div>
 
@@ -186,9 +152,7 @@ export default function AdminSchoolSearchPage() {
             </select>
           </div>
 
-          {message ? (
-            <p className={`mt-3 text-sm ${message.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>
-          ) : null}
+          {schoolError ? <p className="mt-3 text-sm text-red-600">❌ {schoolError}</p> : null}
         </div>
 
         <div className="mt-5 space-y-2">

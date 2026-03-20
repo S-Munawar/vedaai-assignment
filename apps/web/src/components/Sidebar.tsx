@@ -2,24 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-
-const navigationItems = [
-  { href: '/', label: 'Home' },
-  { href: '/my-groups', label: 'My Groups' },
-  { href: '/assignments', label: 'Assignments' },
-  { href: '/ai-teachers-toolkit', label: 'AI Teacher\'s Toolkit' },
-  { href: '/my-library', label: 'My Library' },
-  { href: '/create-assignment', label: 'Create Assignment' },
-];
+import { isAuthPage, SIDEBAR_NAV_ITEMS } from '@/constants/navigation.constants';
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  if (
-    pathname.startsWith('/login') ||
-    pathname.startsWith('/register') ||
-    pathname.startsWith('/complete-registration')
-  ) {
+  if (isAuthPage(pathname)) {
     return null;
   }
 
@@ -30,7 +18,7 @@ export default function Sidebar() {
       </div>
       <nav className="w-full">
         <ul className="list-none p-0 m-0">
-          {navigationItems.map((item) => (
+          {SIDEBAR_NAV_ITEMS.map((item) => (
             <li key={item.href} className="mb-2.5">
               <Link
                 href={item.href}

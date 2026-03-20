@@ -18,6 +18,11 @@ import {
   PlusIcon,
   ChevronDownIcon,
 } from "@/components/SVGIcons";
+import {
+  CLASS_OPTIONS,
+  SUBJECT_OPTIONS,
+  getChapterSuggestions,
+} from "@/constants/assignment-form.constants";
 import { useAssignmentStore, type QuestionRow } from "@/store/assignment.store";
 
 function Stepper({
@@ -82,46 +87,7 @@ export function AssignmentDetailsForm() {
   const classDropdownRef = useRef<HTMLDivElement | null>(null);
   const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
 
-  const classOptions = Array.from({ length: 12 }, (_, index) => String(index + 1));
-  const subjectOptions = [
-    "Physics",
-    "Chemistry",
-    "Biology",
-    "Mathematics",
-    "English",
-    "History",
-    "Geography",
-    "Computer Science",
-  ];
-
-  const chapterOptionsBySubject: Record<string, string[]> = {
-    physics: ["Motion", "Force and Laws of Motion", "Work and Energy", "Gravitation", "Light"],
-    chemistry: ["Matter in Our Surroundings", "Atoms and Molecules", "Structure of Atom", "Acids Bases and Salts", "Carbon and Its Compounds"],
-    biology: ["Cell", "Tissues", "Life Processes", "Control and Coordination", "Heredity and Evolution"],
-    mathematics: ["Number Systems", "Polynomials", "Linear Equations", "Triangles", "Statistics"],
-    english: ["Reading Comprehension", "Grammar", "Writing Skills", "Literature", "Poetry"],
-    history: ["The French Revolution", "Nationalism in Europe", "Print Culture", "India and the Contemporary World", "Nazism and the Rise of Hitler"],
-    geography: ["Resources and Development", "Forest and Wildlife", "Water Resources", "Agriculture", "Minerals and Energy Resources"],
-    "computer science": ["Computer Fundamentals", "Programming Basics", "Data Structures", "Database Concepts", "Networking"],
-  };
-
-  const chapterSuggestions = useMemo(() => {
-    const normalizedSubject = subject.trim().toLowerCase();
-
-    if (!normalizedSubject) {
-      return [] as string[];
-    }
-
-    if (chapterOptionsBySubject[normalizedSubject]) {
-      return chapterOptionsBySubject[normalizedSubject] ?? [];
-    }
-
-    const closestSubjectKey = Object.keys(chapterOptionsBySubject).find((subjectKey) =>
-      subjectKey.includes(normalizedSubject),
-    );
-
-    return closestSubjectKey ? (chapterOptionsBySubject[closestSubjectKey] ?? []) : [];
-  }, [subject]);
+  const chapterSuggestions = useMemo(() => getChapterSuggestions(subject), [subject]);
 
   const totalQuestions = useMemo(
     () => rows.reduce((sum, row) => sum + row.questions, 0),
@@ -314,7 +280,7 @@ export function AssignmentDetailsForm() {
 
               {isClassDropdownOpen ? (
                 <div className="absolute z-20 mt-1 max-h-44 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white py-1 shadow-lg no-scrollbar">
-                  {classOptions.map((option) => (
+                  {CLASS_OPTIONS.map((option) => (
                     <button
                       key={option}
                       type="button"
@@ -344,7 +310,7 @@ export function AssignmentDetailsForm() {
                 className="hide-datalist-indicator h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pr-12 text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none"
               />
               <datalist id="subject-options">
-                {subjectOptions.map((option) => (
+                {SUBJECT_OPTIONS.map((option) => (
                   <option key={option} value={option} />
                 ))}
               </datalist>
