@@ -547,6 +547,22 @@ function buildExpectedQuestions(input: AssignmentIntakeRequest) {
   return expected;
 }
 
+function buildMissingQuestionPrompt(
+  input: AssignmentIntakeRequest,
+  questionType: AssignmentGeneratedDraft['questions'][number]['type'],
+  questionId: number,
+) {
+  return `Create a ${questionType} question from chapter "${input.chapterName}" for class ${input.classLevel}. (Q${questionId})`;
+}
+
+function buildMissingAnswer(
+  input: AssignmentIntakeRequest,
+  questionType: AssignmentGeneratedDraft['questions'][number]['type'],
+  questionId: number,
+) {
+  return `Model did not return an answer for Q${questionId}. Provide a concise ${questionType.toLowerCase()} answer from chapter "${input.chapterName}".`;
+}
+
 function normalizeDraftAgainstInput(
   input: AssignmentIntakeRequest,
   draft: RawAssignmentGeneratedDraft,
@@ -554,17 +570,10 @@ function normalizeDraftAgainstInput(
   const expectedQuestions = buildExpectedQuestions(input);
   const llmQuestions = [...draft.questions].sort((a, b) => a.id - b.id);
 
-  if (llmQuestions.length < expectedQuestions.length) {
-    throw new Error('LLM output has fewer questions than required');
-  }
-
   // Keep LLM-authored prompts, but enforce app-required ids/types/marks blueprint.
   const normalizedQuestions = expectedQuestions.map((expected, index) => {
-    const prompt = llmQuestions[index]?.prompt?.trim() || '';
-
-    if (!prompt) {
-      throw new Error(`LLM output has empty prompt for question ${expected.id}`);
-    }
+    const llmPrompt = llmQuestions[index]?.prompt?.trim() || '';
+    const prompt = llmPrompt || buildMissingQuestionPrompt(input, expected.type, expected.id);
 
     return {
       id: expected.id,
@@ -585,11 +594,9 @@ function normalizeDraftAgainstInput(
   const normalizedAnswerKey = normalizedQuestions.map((question, index) => {
     const exactAnswer = answerByQuestionId.get(question.id) || '';
     const sequentialAnswer = draft.answerKey[index]?.answer?.trim() || '';
-    const answer = (exactAnswer || sequentialAnswer).trim();
-
-    if (!answer) {
-      throw new Error(`LLM output missing answer for question ${question.id}`);
-    }
+    const answer =
+      (exactAnswer || sequentialAnswer).trim() ||
+      buildMissingAnswer(input, question.type, question.id);
 
     return {
       questionId: question.id,
