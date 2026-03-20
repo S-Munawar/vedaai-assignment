@@ -1,27 +1,106 @@
 @import "tailwindcss";
 
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--color-primary);
+  --color-primary-dark: var(--color-primary-dark);
+  --color-primary-light: var(--color-primary-light);
+  --color-success: var(--color-success);
+  --color-border: var(--color-border);
+  --color-muted: var(--color-text-muted);
+  --color-surface: var(--color-surface-primary);
+
+  --font-sans: var(--font-primary);
+}
+
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #171717;
+    /* Brand */
+    --color-primary: #ff5623;
+    --color-primary-dark: #c1380a;
+    --color-primary-light: #ff7847;
+    --color-success: #4bc26e;
+
+    /* Neutrals */
+    --color-text-primary: #2f2f2f;
+    --color-text-secondary: #5e5e5e;
+    --color-text-muted: #a9a9a9;
+    --color-text-white: #ffffff;
+
+    --color-bg-white: #ffffff;
+    --color-bg-off-white: #f7f7f7;
+    --color-bg-gray-light: #efefef;
+    --color-bg-gray: #e5e5e5;
+    --color-bg-dark: #181818;
+    --color-bg-dark-elevated: #272727;
+
+    /* Surfaces and borders */
+    --color-surface-primary: #ffffff;
+    --color-surface-secondary: #f7f7f7;
+    --color-surface-tertiary: #efefef;
+    --color-border: rgba(0, 0, 0, 0.1);
+
+    /* Typography */
+    --font-primary: "Bricolage Grotesque", "Manrope", "Inter", "Segoe UI", sans-serif;
+    --font-secondary: "Inter", "Segoe UI", sans-serif;
+
+    /* Radius */
+    --radius-lg: 16px;
+    --radius-full: 9999px;
+
+    --layout-sidebar-width: 304px;
+    --layout-header-height: 56px;
+
+    /* Effects */
+    --shadow-realistic-lg: 0 32px 48px rgba(0, 0, 0, 0.2);
+    --shadow-realistic-md: 0 16px 48px rgba(0, 0, 0, 0.12);
+    --shadow-realistic-sm: 0 4px 4px rgba(0, 0, 0, 0.25);
+    --shadow-inner-glow: inset 0 0 34.5px rgba(255, 255, 255, 0.25);
+    --shadow-inner-subtle: inset 0 -1px 3.5px rgba(177, 177, 177, 0.6);
+
+    --gradient-page: linear-gradient(180deg, #efefef 0%, #dadada 100%);
+    --gradient-button-border: linear-gradient(180deg, #ff7847 0%, #c1380a 100%);
+
+    --transition-fast: 0.15s ease-out;
+    --transition-normal: 0.3s ease-out;
+
+    --background: var(--color-bg-white);
+    --foreground: var(--color-text-primary);
     color-scheme: light;
   }
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --background: #0a0a0a;
-      --foreground: #ededed;
-      color-scheme: dark;
-    }
-  }
-
   body {
+    font-family: var(--font-primary);
     background-color: var(--background);
     color: var(--foreground);
+    background-image: var(--gradient-page);
+    min-height: 100vh;
   }
 }
 
 @layer utilities {
+  .veda-surface {
+    background-color: var(--color-surface-primary);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-realistic-md);
+  }
+
+  .veda-glass {
+    background-color: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(20px);
+  }
+
+  .veda-pill {
+    border-radius: var(--radius-full);
+  }
+
+  .veda-focus-ring {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 86, 35, 0.35);
+  }
+
   .hide-datalist-indicator::-webkit-calendar-picker-indicator {
     display: none !important;
     opacity: 0;
@@ -47,16 +126,6 @@
 
   .imgLight {
     display: block;
-  }
-
-  @media (prefers-color-scheme: dark) {
-    .imgLight {
-      display: none;
-    }
-
-    .imgDark {
-      display: block;
-    }
   }
 }
 
