@@ -16,7 +16,7 @@ const notificationSchema = new Schema(
     },
     type: {
       type: String,
-      enum: ['assignment:deleted'],
+      enum: ['assignment:created', 'assignment:deleted'],
       required: true,
     },
     title: {

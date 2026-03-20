@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { mongoIdSchema } from './assignment';
 
-export const notificationTypeSchema = z.enum(['assignment:deleted']);
+export const notificationTypeSchema = z.enum(['assignment:created', 'assignment:deleted']);
 
 export const notificationItemSchema = z.object({
   id: mongoIdSchema,
@@ -28,6 +28,7 @@ export const notificationCreatedRealtimeEventSchema = z.object({
 export const notificationDeletedRealtimeEventSchema = z.object({
   type: z.literal('notification:deleted'),
   notificationId: mongoIdSchema,
+  wasRead: z.boolean(),
 });
 
 export const notificationReadRealtimeEventSchema = z.object({

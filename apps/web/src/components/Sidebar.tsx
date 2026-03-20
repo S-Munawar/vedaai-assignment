@@ -1,23 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import { assignmentCreatedRealtimeEventSchema } from '@repo/shared/assignment';
-import { useAuth } from '@/hooks/useAuth';
-import { getRealtimeSocket } from '@/lib/realtime';
-import {
-  clearUnreadCount,
-  getUnreadCount,
-  incrementUnreadCount,
-  subscribeUnreadCount,
-} from '@/lib/notifications-unread';
+import { usePathname } from 'next/navigation';
 
 const navigationItems = [
   { href: '/', label: 'Home' },
   { href: '/my-groups', label: 'My Groups' },
   { href: '/assignments', label: 'Assignments' },
-  { href: '/notifications', label: 'Notifications' },
   { href: '/ai-teachers-toolkit', label: 'AI Teacher\'s Toolkit' },
   { href: '/my-library', label: 'My Library' },
   { href: '/create-assignment', label: 'Create Assignment' },
@@ -25,59 +14,6 @@ const navigationItems = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { isLoggingOut, logout } = useAuth();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    setUnreadCount(getUnreadCount());
-
-    return subscribeUnreadCount((value) => {
-      setUnreadCount(value);
-    });
-  }, []);
-
-  useEffect(() => {
-    if (!pathname.startsWith('/notifications')) {
-      return;
-    }
-
-    clearUnreadCount();
-  }, [pathname]);
-
-  useEffect(() => {
-    const socket = getRealtimeSocket();
-
-    if (!socket) {
-      return;
-    }
-
-    const onAssignmentCreated = (payload: unknown) => {
-      const parsed = assignmentCreatedRealtimeEventSchema.safeParse(payload);
-
-      if (!parsed.success) {
-        return;
-      }
-
-      if (pathname.startsWith('/notifications')) {
-        return;
-      }
-
-      incrementUnreadCount(1);
-    };
-
-    socket.on('assignment:created', onAssignmentCreated);
-
-    return () => {
-      socket.off('assignment:created', onAssignmentCreated);
-    };
-  }, [pathname]);
-
-  async function handleLogout() {
-    await logout();
-    router.push('/login');
-    router.refresh();
-  }
 
   if (
     pathname.startsWith('/login') ||
@@ -104,33 +40,12 @@ export default function Sidebar() {
                     : 'text-gray-600 hover:bg-gray-300 hover:text-gray-800'
                 }`}
               >
-                <span className="flex items-center justify-between gap-2">
-                  <span>{item.label}</span>
-                  {item.href === '/notifications' && unreadCount > 0 ? (
-                    <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                        pathname === item.href ? 'bg-white text-blue-700' : 'bg-blue-600 text-white'
-                      }`}
-                    >
-                      {unreadCount}
-                    </span>
-                  ) : null}
-                </span>
+                <span>{item.label}</span>
               </Link>
             </li>
           ))}
         </ul>
       </nav>
-      <div className="mt-6 pt-4 border-t border-gray-200">
-        <button
-          type="button"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          className="w-full px-4 py-3 rounded-md text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-200 disabled:opacity-60"
-        >
-          {isLoggingOut ? 'Logging out...' : 'Logout'}
-        </button>
-      </div>
     </aside>
   );
 }

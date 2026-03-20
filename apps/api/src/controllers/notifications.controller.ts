@@ -142,6 +142,7 @@ export async function deleteNotification(req: Request, res: Response) {
     emitNotificationDeletedEvent(user._id.toString(), {
       type: 'notification:deleted',
       notificationId: idParsed.data,
+      wasRead: notification.isRead,
     });
 
     return res.json({ success: true, notificationId: idParsed.data });

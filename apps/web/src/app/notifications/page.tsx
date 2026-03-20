@@ -12,6 +12,7 @@ import {
 } from "@repo/shared/notification";
 import { assignmentIntakeErrorResponseSchema } from "@repo/shared/assignment";
 import { getApiUrl } from "@/lib/api-base";
+import { setUnreadCount } from "@/lib/notifications-unread";
 import { getRealtimeSocket } from "@/lib/realtime";
 
 export default function NotificationsPage() {
@@ -47,6 +48,7 @@ export default function NotificationsPage() {
       }
 
       setNotifications(parsed.data.notifications);
+      setUnreadCount(parsed.data.unreadCount);
     } catch {
       setErrorMessage("Could not reach backend endpoint.");
     } finally {
@@ -147,7 +149,13 @@ export default function NotificationsPage() {
         return;
       }
 
-      setNotifications((prev) => [parsed.data.notification, ...prev]);
+      setNotifications((prev) => {
+        if (prev.some((item) => item.id === parsed.data.notification.id)) {
+          return prev;
+        }
+
+        return [parsed.data.notification, ...prev];
+      });
     };
 
     const onNotificationDeleted = (payload: unknown) => {
@@ -207,6 +215,10 @@ export default function NotificationsPage() {
   }, []);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  useEffect(() => {
+    setUnreadCount(unreadCount);
+  }, [unreadCount]);
 
   return (
     <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">

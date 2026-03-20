@@ -4,7 +4,10 @@ import { assignmentIntakeRequestSchema, mongoIdSchema } from '@repo/shared/assig
 import { AssignmentModel } from '@/models/assignment.model';
 import { UserModel } from '@/models/user.model';
 import { verifyAuthToken } from '@/services/auth-token.service';
-import { createAssignmentDeletedNotification } from '@/services/notification.service';
+import {
+  createAssignmentCreatedNotification,
+  createAssignmentDeletedNotification,
+} from '@/services/notification.service';
 import { emitAssignmentCreatedEvent, emitAssignmentDeletedEvent } from '@/socket/realtime.context';
 import { parseCookie } from '@/utils/cookie.util';
 
@@ -138,6 +141,24 @@ export async function intakeAssignmentDetails(req: Request, res: Response) {
         createdAt: assignment.createdAt.toISOString(),
       },
     });
+
+    // Create realtime notifications for all users in the school.
+    try {
+      const schoolUsers = await UserModel.find({ school: creator.school }).select('_id');
+
+      for (const schoolUser of schoolUsers) {
+        void createAssignmentCreatedNotification(
+          schoolUser._id,
+          creator.school,
+          assignment.chapterName,
+          creator.username,
+          assignment._id,
+          creator._id,
+        );
+      }
+    } catch (notificationError) {
+      console.error('⚠️ Error creating assignment created notifications:', notificationError);
+    }
 
     console.log('📥 Assignment intake received:', JSON.stringify(payload, null, 2));
     
@@ -302,6 +323,7 @@ export async function deleteAssignment(req: Request, res: Response) {
           assignment.chapterName,
           user.username,
           assignment._id,
+          user._id,
         );
       }
     } catch (notificationError) {
