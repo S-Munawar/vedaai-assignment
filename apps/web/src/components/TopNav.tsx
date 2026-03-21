@@ -20,6 +20,7 @@ import {
   subscribeUnreadCount,
 } from '@/lib/notifications-unread';
 import { isAuthPage, resolvePageName } from '@/constants/navigation.constants';
+import { ArrowLeft, Home, Bell, ChevronDown } from 'lucide-react';
 
 function getInitials(user: AuthTokenPayload | null): string {
   const name = user?.username?.trim();
@@ -180,21 +181,22 @@ export default function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white/95 backdrop-blur">
-      <div className="flex h-16 items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-40 px-6 bg-white-75 rounded-2xl ">
+      <div className="flex h-16 items-center justify-between gap-2.5">
         <div className="flex items-center gap-3">
           <button
             type="button"
-            onClick={handleGoBack}
+            onClick={handleGoBack}  
             aria-label="Go back"
             disabled={isBackDisabled}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition enabled:hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex bg-white h-10 w-10 items-center justify-center rounded-full "
           >
-            <span aria-hidden="true" className="text-lg">←</span>
+            <ArrowLeft /> 
           </button>
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">VedaAI Workspace</p>
-            <h1 className="text-lg font-semibold text-gray-900">{pageName}</h1>
+          
+          <div className="flex items-center gap-2 text-disabled text-base font-semibold">
+            <Home /> 
+            <h1 className="">{pageName}</h1>
           </div>
         </div>
 
@@ -202,28 +204,26 @@ export default function TopNav() {
           <Link
             href="/notifications"
             aria-label="Notifications"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:bg-gray-100"
+            className="relative bg-off-white inline-flex h-9 w-9 items-center justify-center rounded-full"
           >
-            <span aria-hidden="true" className="text-lg">🔔</span>
+            <Bell />
             {unreadCount > 0 ? (
-              <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white">
-                {unreadCount > 99 ? '99+' : unreadCount}
-              </span>
+              <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary-orange" />
             ) : null}
           </Link>
 
           <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full border border-gray-200 px-2 py-1.5 hover:bg-gray-100">
+            <summary className="flex cursor-pointer list-none items-center bg-white gap-2 rounded-xl px-3 py-1.5 shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
                 {getInitials(authUser)}
               </span>
               <span className="hidden text-sm font-medium text-gray-700 sm:block">
                 {authUser?.username || 'Profile'}
               </span>
-              <span className="text-xs text-gray-500">▾</span>
+              <ChevronDown />
             </summary>
 
-            <div className="absolute right-0 mt-2 w-64 rounded-xl border border-gray-200 bg-white p-3 shadow-lg">
+            <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white p-3 border border-gray-100">
               <div className="mb-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
                 <p className="text-sm font-semibold text-gray-900">{authUser?.username || 'User'}</p>
                 <p className="mt-1 text-xs text-gray-600">{authUser?.schoolName || 'School not available'}</p>

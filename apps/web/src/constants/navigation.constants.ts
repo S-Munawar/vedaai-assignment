@@ -1,12 +1,13 @@
+import { Home, Users, FileText, Bot, Clock } from 'lucide-react';
+
 export const AUTH_PAGE_PREFIXES = ['/login', '/register', '/complete-registration'] as const;
 
 export const SIDEBAR_NAV_ITEMS = [
-  { href: '/', label: 'Home' },
-  { href: '/my-groups', label: 'My Groups' },
-  { href: '/assignments', label: 'Assignments' },
-  { href: '/ai-teachers-toolkit', label: "AI Teacher's Toolkit" },
-  { href: '/my-library', label: 'My Library' },
-  { href: '/create-assignment', label: 'Create Assignment' },
+  { href: '/', label: 'Home', icon: Home },
+  { href: '/my-groups', label: 'My Groups', icon: Users },
+  { href: '/assignments', label: 'Assignments', icon: FileText },
+  { href: '/ai-teachers-toolkit', label: "AI Teacher's Toolkit", icon: Bot },
+  { href: '/my-library', label: 'My Library', icon: Clock },
 ] as const;
 
 const ROUTE_NAMES: Array<{ match: (pathname: string) => boolean; name: string }> = [

@@ -1,79 +1,110 @@
 @import "tailwindcss";
 
+/* ============================================================
+   @theme — Maps raw tokens → Tailwind utility classes
+   `inline` means Tailwind references the :root vars directly
+   instead of generating new CSS variables
+   ============================================================ */
 @theme inline {
+  /* Colors */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-primary: var(--color-primary);
-  --color-primary-dark: var(--color-primary-dark);
-  --color-primary-light: var(--color-primary-light);
-  --color-success: var(--color-success);
-  --color-border: var(--color-border);
-  --color-muted: var(--color-text-muted);
-  --color-surface: var(--color-surface-primary);
+  --color-primary: var(--text-primary);
+  --color-primary-orange: var(--brand-primary-orange);
+  --color-success: var(--brand-success);
+  --color-success-soft: var(--brand-success-soft);
+  --color-error: var(--utility-error);
+  --color-border: var(--surface-border);
+  --color-muted: var(--text-muted);
+  --color-secondary: var(--text-secondary);
+  --color-disabled: var(--bg-disabled);
+  --color-hover: var(--bg-off-white-20);
+  --color-bg-white-25: var(--bg-white-25);
+  --color-white-75: var(--bg-white-75);
+  --color-bg-dark: var(--bg-dark);
+  --color-surface: var(--surface-primary);
 
+  /* Typography */
   --font-sans: var(--font-primary);
 }
 
+/* ============================================================
+   @layer base — Raw design tokens + global element styles
+   ============================================================ */
 @layer base {
   :root {
-    /* Brand */
-    --color-primary: #ff5623;
-    --color-primary-dark: #c1380a;
-    --color-primary-light: #ff7847;
-    --color-success: #4bc26e;
+    /* --- Brand --- */
+    --brand-primary-orange: #ff5623;
+    --brand-primary-orange-dark: #c1380a;
+    --brand-primary-orange-light: #ff7847;
+    --brand-success: #4bc26e;
+    --brand-success-soft: #4bc26d66;
+    --utility-error: #c53535;
 
-    /* Neutrals */
-    --color-text-primary: #2f2f2f;
-    --color-text-secondary: #5e5e5e;
-    --color-text-muted: #a9a9a9;
-    --color-text-white: #ffffff;
+    /* --- Text --- */
+    --text-primary: #303030;
+    --text-secondary: rgb(94 94 94 / 80%);
+    --text-muted: #5e5e5e;
+    --text-white: #ffffff;
 
-    --color-bg-white: #ffffff;
-    --color-bg-off-white: #f7f7f7;
-    --color-bg-gray-light: #efefef;
-    --color-bg-gray: #e5e5e5;
-    --color-bg-dark: #181818;
-    --color-bg-dark-elevated: #272727;
+    /* --- Backgrounds --- */
+    --bg-white: #ffffff;
+    --bg-white-25: #ffffff40;
+    --bg-off-white: #f0f0f0;
+    --bg-off-white-20: rgb(240 240 240 / 20%);
+    --bg-white-75: rgba(255, 255, 255, 0.75);
+    --bg-disabled: #a9a9a9;
+    --bg-gray-light: #efefef;
+    --bg-gray: #e5e5e5;
+    --bg-dark: #181818;
+    --bg-dark-grey: #2b2b2b;
+    --bg-dark-elevated: #272727;
 
-    /* Surfaces and borders */
-    --color-surface-primary: #ffffff;
-    --color-surface-secondary: #f7f7f7;
-    --color-surface-tertiary: #efefef;
-    --color-border: rgba(0, 0, 0, 0.1);
+    /* --- Surfaces & Borders --- */
+    --surface-primary: #ffffff;
+    --surface-secondary: #f7f7f7;
+    --surface-tertiary: #efefef;
+    --surface-border: rgba(0, 0, 0, 0.1);
 
-    /* Typography */
+    /* --- Typography --- */
     --font-primary: "Bricolage Grotesque", "Manrope", "Inter", "Segoe UI", sans-serif;
     --font-secondary: "Inter", "Segoe UI", sans-serif;
 
-    /* Radius */
+    /* --- Radius --- */
     --radius-lg: 16px;
     --radius-full: 9999px;
 
+    /* --- Layout --- */
     --layout-sidebar-width: 304px;
     --layout-header-height: 56px;
 
-    /* Effects */
+    /* --- Shadows --- */
     --shadow-realistic-lg: 0 32px 48px rgba(0, 0, 0, 0.2);
     --shadow-realistic-md: 0 16px 48px rgba(0, 0, 0, 0.12);
     --shadow-realistic-sm: 0 4px 4px rgba(0, 0, 0, 0.25);
     --shadow-inner-glow: inset 0 0 34.5px rgba(255, 255, 255, 0.25);
     --shadow-inner-subtle: inset 0 -1px 3.5px rgba(177, 177, 177, 0.6);
 
-    --gradient-page: linear-gradient(180deg, #efefef 0%, #dadada 100%);
-    --gradient-button-border: linear-gradient(180deg, #ff7847 0%, #c1380a 100%);
+    /* --- Gradients --- */
+    --gradient-page: linear-gradient(180deg, #eeeeee 0%, #dadada 100%);
+    --gradient-button-border: linear-gradient(180deg, #f77950 0%, #c0350a 100%);
 
+    /* --- Transitions --- */
     --transition-fast: 0.15s ease-out;
     --transition-normal: 0.3s ease-out;
 
-    --background: var(--color-bg-white);
-    --foreground: var(--color-text-primary);
+    /* --- Semantic aliases (consumed by @theme above) --- */
+    --background: var(--bg-off-white);
+    --foreground: var(--bg-white); /* surface/card color, not text */
+    --primary-orange: var(--brand-primary-orange);
+
     color-scheme: light;
   }
 
   body {
     font-family: var(--font-primary);
     background-color: var(--background);
-    color: var(--foreground);
+    color: var(--text-primary);
     background-image: var(--gradient-page);
     min-height: 100vh;
   }
@@ -88,7 +119,7 @@
   }
 
   .veda-glass {
-    background-color: rgba(255, 255, 255, 0.78);
+    background-color: var(--color-bg-white-75);
     backdrop-filter: blur(20px);
   }
 
