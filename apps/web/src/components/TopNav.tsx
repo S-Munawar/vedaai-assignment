@@ -214,9 +214,17 @@ export default function TopNav() {
 
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center bg-white gap-2 rounded-xl px-3 py-1.5 shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
-                {getInitials(authUser)}
-              </span>
+              {authUser?.profileImage ? (
+                <img
+                  src={authUser.profileImage}
+                  alt={authUser?.username ? `${authUser.username} profile` : 'Profile'}
+                  className="h-8 w-8 rounded-full object-cover"
+                />
+              ) : (
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">
+                  {getInitials(authUser)}
+                </span>
+              )}
               <span className="hidden text-sm font-medium text-gray-700 sm:block">
                 {authUser?.username || 'Profile'}
               </span>

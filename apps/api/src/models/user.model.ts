@@ -1,5 +1,12 @@
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
 
+const PROFILE_IMAGE_OPTIONS = ['/profile-images/1.png', '/profile-images/2.png', '/profile-images/3.png'] as const;
+
+function getRandomProfileImage(): string {
+  const randomIndex = Math.floor(Math.random() * PROFILE_IMAGE_OPTIONS.length);
+  return PROFILE_IMAGE_OPTIONS[randomIndex] ?? PROFILE_IMAGE_OPTIONS[0];
+}
+
 const userSchema = new Schema(
   {
     username: {
@@ -13,6 +20,11 @@ const userSchema = new Schema(
       lowercase: true,
       unique: true,
       sparse: true,
+    },
+    profileImage: {
+      type: String,
+      default: getRandomProfileImage,
+      trim: true,
     },
     school: {
       type: Schema.Types.ObjectId,

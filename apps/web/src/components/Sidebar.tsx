@@ -17,7 +17,7 @@ export default function Sidebar() {
     <aside className="bg-background rounded-xl py-3 pl-3 h-screen overflow-y-auto sticky top-0">
       <div className="flex flex-col gap-14 bg-white rounded-lg p-6 overflow-y-auto shadow-md h-full no-scrollbar">
         <div className="flex items-center gap-2">
-          <img src="/veda.png" alt="VedaAI Logo" className="w-10 h-10 rounded-xl" />
+          <img src="/vedaAI.png" alt="VedaAI Logo" className="rounded-xl w-10 h-10" />
           <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
         </div>
 

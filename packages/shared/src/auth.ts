@@ -4,6 +4,7 @@ export const ALLOWED_SCHOOLS = ['Delhi Public Schoool'] as const;
 
 export const schoolNameSchema = z.string().trim().min(1, 'School name is required').max(120);
 export const authProviderSchema = z.enum(['credentials', 'google']);
+export const profileImageSchema = z.string().trim().min(1, 'Profile image is required');
 
 export const registerRequestSchema = z.object({
   username: z.string().trim().min(1, 'Username is required'),
@@ -14,18 +15,18 @@ export const registerRequestSchema = z.object({
 export const loginRequestSchema = z.object({
   username: z.string().trim().min(1, 'Username is required'),
   password: z.string().min(1, 'Password is required'),
-  schoolName: schoolNameSchema,
 });
 
 export const googleAuthRequestSchema = z.object({
   idToken: z.string().trim().min(1, 'idToken is required'),
-  schoolName: schoolNameSchema,
+  schoolName: schoolNameSchema.optional(),
 });
 
 export const authUserSchema = z.object({
   id: z.string(),
   username: z.string(),
   email: z.string().optional(),
+  profileImage: profileImageSchema.optional(),
   schoolId: z.string(),
   schoolName: schoolNameSchema,
   provider: authProviderSchema,
@@ -53,6 +54,7 @@ export const authTokenPayloadSchema = z.object({
   sub: z.string(),
   username: z.string().optional(),
   email: z.string().optional(),
+  profileImage: profileImageSchema.optional(),
   schoolId: z.string(),
   schoolName: schoolNameSchema,
   provider: authProviderSchema,

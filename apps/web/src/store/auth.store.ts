@@ -21,7 +21,6 @@ const DEFAULT_SCHOOL = '';
 export const useAuthStore = create<AuthStore>((set, get) => ({
   loginForm: {
     username: '',
-    schoolName: DEFAULT_SCHOOL,
     password: '',
   },
   registerForm: {
@@ -182,18 +181,49 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
 
       if (!parsed.success) {
         set({ error: parsed.error.issues[0]?.message || 'Invalid Google sign-in response' });
-        return false;
+        return null;
       }
 
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('pendingGoogleRegistration', JSON.stringify(parsed.data));
+      const authResponse = await fetch(getApiUrl('/auth/google'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: parsed.data.idToken }),
+      });
+
+      if (authResponse.ok) {
+        const success = authSuccessResponseSchema.safeParse(await authResponse.json());
+
+        if (!success.success) {
+          set({ error: 'Unexpected Google auth response' });
+          return null;
+        }
+
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('pendingGoogleRegistration');
+        }
+
+        set({ pendingGoogleRegistration: null });
+        return 'authenticated';
       }
 
-      set({ pendingGoogleRegistration: parsed.data });
-      return true;
+      const failed = authErrorResponseSchema.safeParse(await authResponse.json());
+      const errorMessage = failed.success ? failed.data.error : 'Google sign-in failed';
+
+      if (errorMessage === 'School selection required to complete registration') {
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('pendingGoogleRegistration', JSON.stringify(parsed.data));
+        }
+
+        set({ pendingGoogleRegistration: parsed.data, error: '' });
+        return 'needs-completion';
+      }
+
+      set({ error: errorMessage });
+      return null;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Google sign-in failed' });
-      return false;
+      return null;
     } finally {
       set({ isSubmitting: false });
     }
@@ -286,7 +316,6 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         error: '',
         loginForm: {
           username: '',
-          schoolName: DEFAULT_SCHOOL,
           password: '',
         },
         registerForm: {

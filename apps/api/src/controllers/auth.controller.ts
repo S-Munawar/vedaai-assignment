@@ -7,6 +7,7 @@ import {
 import { signAuthToken, verifyAuthToken } from '@/services/auth-token.service';
 import { verifyGoogleIdToken } from '@/services/google-auth.service';
 import {
+  findGoogleUserByEmail,
   loginCredentialUser,
   registerCredentialUser,
   upsertGoogleUser,
@@ -28,6 +29,7 @@ export async function register(req: Request, res: Response) {
     const token = await signAuthToken({
       sub: user.id,
       username: user.username,
+      profileImage: user.profileImage,
       schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'credentials',
@@ -39,6 +41,7 @@ export async function register(req: Request, res: Response) {
       user: {
         id: user.id,
         username: user.username,
+        profileImage: user.profileImage,
         schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'credentials',
@@ -65,17 +68,18 @@ export async function login(req: Request, res: Response) {
       return res.status(400).json({ error: parsed.error.issues[0]?.message || 'Invalid request body' });
     }
 
-    const { username, password, schoolName } = parsed.data;
+    const { username, password } = parsed.data;
 
-    const user = await loginCredentialUser({ username, password, schoolName });
+    const user = await loginCredentialUser({ username, password });
 
     if (!user) {
-      return res.status(401).json({ error: 'Invalid username, school name, or password' });
+      return res.status(401).json({ error: 'Invalid username or password' });
     }
 
     const token = await signAuthToken({
       sub: user.id,
       username: user.username,
+      profileImage: user.profileImage,
       schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'credentials',
@@ -87,6 +91,7 @@ export async function login(req: Request, res: Response) {
       user: {
         id: user.id,
         username: user.username,
+        profileImage: user.profileImage,
         schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'credentials',
@@ -108,6 +113,38 @@ export async function googleAuth(req: Request, res: Response) {
     const { idToken, schoolName } = parsed.data;
 
     const verified = await verifyGoogleIdToken(idToken);
+    const existingUser = await findGoogleUserByEmail(verified.email);
+
+    if (existingUser) {
+      const token = await signAuthToken({
+        sub: existingUser.id,
+        username: existingUser.username,
+        email: existingUser.email,
+        profileImage: existingUser.profileImage,
+        schoolId: existingUser.schoolId,
+        schoolName: existingUser.schoolName,
+        provider: 'google',
+      });
+
+      res.setHeader('Set-Cookie', buildAuthCookie(token));
+      return res.json({
+        success: true,
+        user: {
+          id: existingUser.id,
+          username: existingUser.username,
+          email: existingUser.email,
+          profileImage: existingUser.profileImage,
+          schoolId: existingUser.schoolId,
+          schoolName: existingUser.schoolName,
+          provider: 'google',
+        },
+      });
+    }
+
+    if (!schoolName) {
+      return res.status(409).json({ error: 'School selection required to complete registration' });
+    }
+
     const user = await upsertGoogleUser({
       email: verified.email,
       name: verified.name,
@@ -118,6 +155,7 @@ export async function googleAuth(req: Request, res: Response) {
       sub: user.id,
       username: user.username,
       email: user.email,
+      profileImage: user.profileImage,
       schoolId: user.schoolId,
       schoolName: user.schoolName,
       provider: 'google',
@@ -130,6 +168,7 @@ export async function googleAuth(req: Request, res: Response) {
         id: user.id,
         username: user.username,
         email: user.email,
+        profileImage: user.profileImage,
         schoolId: user.schoolId,
         schoolName: user.schoolName,
         provider: 'google',

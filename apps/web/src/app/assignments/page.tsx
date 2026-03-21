@@ -234,7 +234,7 @@ export default function Assignments() {
   }, []);
 
   return (
-    <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
+    <section className="min-h-screen bg-background px-4 py-8 sm:px-8">
       <div className="mx-auto max-w-5xl rounded-xl border border-gray-200 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:p-8">
         <header className="mb-6">
           <div className="flex items-center justify-between gap-3">
