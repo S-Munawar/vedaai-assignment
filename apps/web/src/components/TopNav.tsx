@@ -20,7 +20,7 @@ import {
   subscribeUnreadCount,
 } from '@/lib/notifications-unread';
 import { isAuthPage, resolvePageName } from '@/constants/navigation.constants';
-import { ArrowLeft, Home, Bell, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Home, Bell, ChevronDown, Menu } from 'lucide-react';
 
 function getInitials(user: AuthTokenPayload | null): string {
   const name = user?.username?.trim();
@@ -181,22 +181,27 @@ export default function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 px-6 bg-white-75 rounded-2xl ">
+    <header className="sticky top-0 z-40 rounded-2xl bg-white px-6 sm:bg-white-75">
       <div className="flex h-16 items-center justify-between gap-2.5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 sm:hidden">
+          <img src="/vedaAI.png" alt="VedaAI Logo" className="rounded-xl w-10 h-10" />
+          <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
+        </div>
+
+        <div className="hidden items-center gap-3 sm:flex">
           <button
             type="button"
-            onClick={handleGoBack}  
+            onClick={handleGoBack}
             aria-label="Go back"
             disabled={isBackDisabled}
-            className="inline-flex bg-white h-10 w-10 items-center justify-center rounded-full "
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white"
           >
-            <ArrowLeft /> 
+            <ArrowLeft className="text-primary" />
           </button>
-          
+
           <div className="flex items-center gap-2 text-disabled text-base font-semibold">
-            <Home /> 
-            <h1 className="">{pageName}</h1>
+            <Home className="text-disabled" />
+            <h1>{pageName}</h1>
           </div>
         </div>
 
@@ -213,7 +218,7 @@ export default function TopNav() {
           </Link>
 
           <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center bg-white gap-2 rounded-xl px-3 py-1.5 shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
+            <summary className="flex cursor-pointer list-none items-center gap rounded-xl bg-white px-2 py-1 sm:gap-2 sm:px-3 sm:py-1.5 sm:shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
               {authUser?.profileImage ? (
                 <img
                   src={authUser.profileImage}
@@ -228,7 +233,7 @@ export default function TopNav() {
               <span className="hidden text-sm font-medium text-gray-700 sm:block">
                 {authUser?.username || 'Profile'}
               </span>
-              <ChevronDown />
+              <ChevronDown className="hidden text-primary sm:block" />
             </summary>
 
             <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white p-3 border border-gray-100">
@@ -250,6 +255,14 @@ export default function TopNav() {
               </div>
             </div>
           </details>
+
+          <button
+            type="button"
+            aria-label="Open menu"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-off-white sm:hidden"
+          >
+            <Menu className="text-primary" />
+          </button>
         </div>
       </div>
     </header>

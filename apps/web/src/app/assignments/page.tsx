@@ -12,6 +12,9 @@ import {
 } from "@repo/shared/assignment";
 import { getApiUrl } from "@/lib/api-base";
 import { getRealtimeSocket } from "@/lib/realtime";
+import Image from 'next/image';
+import { Plus } from 'lucide-react';
+
 
 export default function Assignments() {
   const [assignments, setAssignments] = useState<AssignmentListItem[]>([]);
@@ -235,29 +238,31 @@ export default function Assignments() {
 
   return (
     <section className="min-h-screen bg-background px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-5xl rounded-xl border border-gray-200 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:p-8">
-        <header className="mb-6">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
-            <span
-              className={`rounded-full px-3 py-1 text-xs font-medium ${
-                realtimeStatus === "connected"
-                  ? "bg-green-100 text-green-700"
-                  : realtimeStatus === "reconnecting"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              Realtime: {realtimeStatus}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-gray-500">Assignments created by teachers in your school.</p>
-        </header>
+      <div className="mx-auto max-w-5xl rounded-xl p-6 sm:p-8">
+        {isLoading || errorMessage || assignments.length > 0 ? (
+          <header className="mb-6">
+            <div className="flex items-center justify-between gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
+              <span
+                className={`rounded-full px-3 py-1 text-xs font-medium ${
+                  realtimeStatus === "connected"
+                    ? "bg-green-100 text-green-700"
+                    : realtimeStatus === "reconnecting"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                Realtime: {realtimeStatus}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">Assignments created by teachers in your school.</p>
+          </header>
+        ) : null}
 
         {isLoading ? <p className="text-sm text-gray-500">Loading assignments...</p> : null}
         {!isLoading && errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
 
-        {!isLoading && !errorMessage ? (
+        {!isLoading && !errorMessage && assignments.length > 0 ? (
           <div className="mb-5 rounded-xl border border-gray-200 bg-[#f2f2f2] p-2">
             <div className="flex items-center justify-between gap-2">
               <button
@@ -294,7 +299,7 @@ export default function Assignments() {
           </div>
         ) : null}
 
-        {isFiltersOpen ? (
+        {isFiltersOpen && assignments.length > 0 ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
               <div className="mb-4 flex items-start justify-between gap-3">
@@ -410,7 +415,33 @@ export default function Assignments() {
         ) : null}
 
         {!isLoading && !errorMessage && assignments.length === 0 ? (
-          <p className="text-sm text-gray-500">No assignments found for your school yet.</p>
+          <div className="flex flex-col items-center justify-center gap-8 py-12 text-center">
+            <div className="flex flex-col items-center gap-3">
+              <Image
+                src="/no-assignments.png"
+                alt="Development in progress"
+                width={260}
+                height={260}
+                className="mx-auto"
+                priority
+              />
+              <div className="mx-auto flex max-w-xl flex-col gap-2 px-4">
+                <h1 className="text-primary text-xl font-bold">No assignments yet</h1>
+                <p className="text-secondary text-lg font-normal whitespace-normal wrap-break-word">
+                  Create your first assignment to start collecting and grading student submissions. You can set up
+                  rubrics, define marking criteria, and let AI assist with grading.
+                </p>
+              </div>
+            </div>
+
+            <Link
+              href="/create-assignment"
+              className="inline-flex items-center gap-1 rounded-full bg-primary px-6 py-3 text-white"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              <span>Create New First Assignment</span>
+            </Link>
+          </div>
         ) : null}
 
         {!isLoading && !errorMessage && assignments.length > 0 && filteredAssignments.length === 0 ? (
@@ -445,7 +476,7 @@ export default function Assignments() {
                       void handleDeleteAssignment(assignment.id);
                     }}
                     disabled={deletingIds.has(assignment.id)}
-                    className="mt-1 flex-shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-1 shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                     title="Delete assignment"
                   >
                     {deletingIds.has(assignment.id) ? "Deleting..." : "Delete"}

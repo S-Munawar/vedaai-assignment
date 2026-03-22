@@ -19,9 +19,10 @@
   --color-secondary: var(--text-secondary);
   --color-disabled: var(--bg-disabled);
   --color-hover: var(--bg-off-white-20);
+  --color-off-white: var(--bg-off-white);
   --color-bg-white-25: var(--bg-white-25);
   --color-white-75: var(--bg-white-75);
-  --color-bg-dark: var(--bg-dark);
+  --color-dark: var(--bg-dark);
   --color-surface: var(--surface-primary);
 
   /* Typography */
@@ -94,7 +95,7 @@
     --transition-normal: 0.3s ease-out;
 
     /* --- Semantic aliases (consumed by @theme above) --- */
-    --background: var(--bg-off-white);
+    --background: var(--gradient-page);
     --foreground: var(--bg-white); /* surface/card color, not text */
     --primary-orange: var(--brand-primary-orange);
 
