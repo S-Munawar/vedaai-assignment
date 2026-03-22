@@ -13,6 +13,7 @@ import {
 import { getApiUrl } from "@/lib/api-base";
 import { useSchools } from "@/hooks/useSchools";
 import type { AdminSchoolForm } from "@/types/admin-school.types";
+import { PageHeader } from "@/components/PageHeader";
 
 const INITIAL_FORM: AdminSchoolForm = {
   name: "",
@@ -34,6 +35,8 @@ const INITIAL_FORM: AdminSchoolForm = {
   description: "",
   isActive: true,
 };
+
+const DEMO_ADMIN_API_KEY = "c90dddb6-9c9f-43c3-815c-8a3e146b5381";
 
 export default function AdminSchoolsPage() {
   const { loadSchools, schoolError } = useSchools();
@@ -118,24 +121,41 @@ export default function AdminSchoolsPage() {
   }
 
   return (
-    <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-3xl rounded-xl border border-gray-200 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:p-8">
-        <header className="mb-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Admin: School Management</h1>
-              <p className="mt-1 text-sm text-gray-500">Add and manage school profiles used across registration and assignments.</p>
-            </div>
-            <Link
-              href="/admin/schools/search"
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Search Schools
-            </Link>
-          </div>
-        </header>
+    <section className="flex min-h-screen flex-col">
+      <div className="mx-auto flex w-full max-w-384 flex-1 flex-col gap-3 rounded-xl">
+        <PageHeader
+          title="School Admin"
+          subtitle="Add and manage school profiles used across registration and assignments."
+          showHeader
+        />
 
-        <form onSubmit={onSubmit} className="space-y-3 rounded-lg border border-gray-200 p-4">
+        <div className="rounded-2xl bg-white p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="space-y-1">
+              <h2 className="text-base font-bold text-primary">Create School Profile</h2>
+              <p className="text-xs text-secondary">
+                Demo API key: <span className="font-semibold text-primary">{DEMO_ADMIN_API_KEY}</span>
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setAdminKey(DEMO_ADMIN_API_KEY)}
+                className="rounded-full border border-border bg-off-white-primary px-3 py-1.5 text-xs font-semibold text-primary transition hover:bg-white"
+              >
+                Use Demo Key
+              </button>
+              <Link
+                href="/admin/schools/search"
+                className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+              >
+                Search Schools
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        <form onSubmit={onSubmit} className="space-y-4 rounded-2xl bg-white p-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium text-gray-700">School Name</label>
@@ -337,15 +357,16 @@ export default function AdminSchoolsPage() {
           ) : null}
           {schoolError && !message ? <p className="text-sm text-red-600">❌ {schoolError}</p> : null}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex h-10 items-center rounded-full bg-gray-900 px-5 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-500"
-          >
-            {isSubmitting ? "Saving..." : "Add School"}
-          </button>
+          <div className="pt-1">
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="inline-flex h-10 items-center rounded-full bg-primary px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isSubmitting ? "Saving..." : "Add School"}
+            </button>
+          </div>
         </form>
-
       </div>
     </section>
   );

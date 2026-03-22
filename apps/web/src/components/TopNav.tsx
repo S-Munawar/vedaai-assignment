@@ -20,7 +20,7 @@ import {
   setUnreadCount,
   subscribeUnreadCount,
 } from '@/lib/notifications-unread';
-import { isAuthPage, resolvePageName } from '@/constants/navigation.constants';
+import { isAuthPage, resolvePageName, SIDEBAR_NAV_ITEMS } from '@/constants/navigation.constants';
 
 function getInitials(user: AuthTokenPayload | null): string {
   const name = user?.username?.trim();
@@ -43,6 +43,13 @@ export default function TopNav() {
 
   const shouldHideNav = isAuthPage(pathname);
   const pageName = useMemo(() => resolvePageName(pathname), [pathname]);
+  const pageIconSrc = useMemo(() => {
+    const matchedItem = SIDEBAR_NAV_ITEMS.find(
+      (item) => pathname === item.href || (item.href !== '/' && pathname.startsWith(`${item.href}/`)),
+    );
+
+    return matchedItem?.iconSrc || '/icons/Home.svg';
+  }, [pathname]);
   const isBackDisabled = pathname === '/';
 
   useEffect(() => {
@@ -200,7 +207,7 @@ export default function TopNav() {
           </button>
 
           <div className="flex items-center gap-2 text-disabled text-base font-semibold">
-            <Image src="/icons/Home.svg" alt="" aria-hidden="true" width={20} height={20} />
+            <Image src={pageIconSrc} alt="" aria-hidden="true" width={20} height={20} />
             <h1>{pageName}</h1>
           </div>
         </div>

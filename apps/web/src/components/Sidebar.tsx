@@ -86,7 +86,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="sticky top-3 hidden overflow-hidden rounded-xl bg-background pl-3 md:block md:h-auto md:max-h-[calc(100vh-1.5rem)]">
+      <aside className="sticky top-3 hidden overflow-visible rounded-xl bg-background pl-3 md:block md:h-auto md:max-h-[calc(100vh-1.5rem)]">
         <div className="flex max-h-full flex-col gap-14 overflow-y-auto rounded-lg bg-white p-6 shadow-[16px_16px_36px_rgba(0,0,0,0.2)] no-scrollbar">
           <div className="flex items-center gap-2">
             <img src="/vedaAI.png" alt="VedaAI Logo" className="h-10 w-10 rounded-xl" />
@@ -150,7 +150,15 @@ export default function Sidebar() {
         </div>
       </aside>
 
-      <footer className="fixed bottom-2.5 left-2.5 right-2.5 z-50 md:hidden">
+      <footer className="flex flex-col gap-2.5 items-end fixed bottom-2.5 left-2.5 right-2.5 z-50 md:hidden">
+        <div className="pointer-events-none flex justify-center">
+          <Link
+            href="/create-assignment"
+            className="bg-white h-12 w-12 rounded-full flex items-center justify-center shadow-lg pointer-events-auto text-primary-orange"
+          >
+            <Image src="/icons/OrangePlus.svg" alt="" aria-hidden="true" width={16} height={16} />
+          </Link>
+        </div>
         <nav className="my-3 h-18 w-full rounded-3xl bg-dark px-6 py-2 shadow-[0_16px_36px_rgba(0,0,0,0.2)]">
           <ul className="flex h-full items-center justify-between">
             {footerLinks.map((item) => {
@@ -160,7 +168,7 @@ export default function Sidebar() {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex flex-col items-center gap-1 rounded-lg p-2.5 text-[12px] font-semibold transition ${
+                    className={`group flex flex-col items-center gap-1 rounded-lg p-2.5 text-[12px] font-semibold transition ${
                       isActive ? 'text-white' : 'text-white/25 hover:text-white'
                     }`}
                   >
@@ -170,7 +178,7 @@ export default function Sidebar() {
                       aria-hidden="true"
                       width={16}
                       height={16}
-                      className={isActive ? 'opacity-100' : 'opacity-70'}
+                      className={isActive ? 'opacity-100' : 'opacity-25 group-hover:opacity-100'}
                     />
                     <span>{item.label}</span>
                   </Link>

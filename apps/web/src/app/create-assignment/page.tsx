@@ -230,8 +230,8 @@ export function AssignmentDetailsForm() {
         />
       </div>
 
-      <div className="flex flex-col gap-8 mx-auto w-full max-w-4xl flex-1 ">
-        <div className="flex flex-col gap-8 rounded-2xl bg-white/50 shadow-[0_12px_30px_rgba(15,23,42,0.06)] p-8">
+      <div className="flex flex-col  gap-8 mx-auto w-full max-w-4xl flex-1 ">
+        <div className="flex flex-col gap-8 rounded-2xl bg-white/50 shadow-[0px_36px_48px_rgba(0,0,0,0.1)] p-8">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-bold text-primary">Assignment Details</h2>
             <p className="text-xs text-disabled">Basic information about your assignment</p>

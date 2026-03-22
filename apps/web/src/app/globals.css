@@ -68,7 +68,7 @@
     --surface-border: rgba(0, 0, 0, 0.1);
 
     /* --- Typography --- */
-    --font-primary: "Bricolage Grotesque", "Manrope", "Inter", "Segoe UI", sans-serif;
+    --font-primary: var(--font-bricolage-grotesque), "Manrope", "Inter", "Segoe UI", sans-serif;
     --font-secondary: "Inter", "Segoe UI", sans-serif;
 
     /* --- Radius --- */

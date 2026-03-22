@@ -1,8 +1,14 @@
 import type { Metadata } from "next";
+import { Bricolage_Grotesque } from "next/font/google";
 import localFont from "next/font/local";
 import Sidebar from "@/components/Sidebar";
 import TopNav from "@/components/TopNav";
 import "./globals.css";
+
+const bricolageGrotesque = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage-grotesque",
+});
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -25,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${bricolageGrotesque.variable} ${geistSans.variable} ${geistMono.variable}`}>
         <div className="flex h-screen bg-off-white/50 md:bg-background">
           <Sidebar />
           <div className="flex min-h-0 flex-1 flex-col gap overflow-hidden p-3 gap-5.5">
