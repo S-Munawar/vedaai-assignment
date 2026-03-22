@@ -86,8 +86,8 @@ export default function Sidebar() {
 
   return (
     <>
-      <aside className="sticky top-3 hidden overflow-visible rounded-xl bg-background pl-3 md:block md:h-auto md:max-h-[calc(100vh-1.5rem)]">
-        <div className="flex max-h-full flex-col gap-14 overflow-y-auto rounded-lg bg-white p-6 shadow-[16px_16px_36px_rgba(0,0,0,0.2)] no-scrollbar">
+       <aside className="sticky top-0 hidden h-screen overflow-visible rounded-xl bg-background py-3 pl-3 md:block">
+        <div className="flex h-full flex-col gap-14 overflow-y-auto rounded-lg bg-white p-6 shadow-[16px_16px_36px_rgba(0,0,0,0.2)] no-scrollbar">
           <div className="flex items-center gap-2">
             <img src="/vedaAI.png" alt="VedaAI Logo" className="h-10 w-10 rounded-xl" />
             <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
@@ -130,7 +130,7 @@ export default function Sidebar() {
             </ul>
           </nav>
 
-          <div className="flex flex-col gap-2">
+          <div className="mt-auto flex flex-col gap-2">
             <div className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-secondary hover:bg-off-white-primary">
               <Image src="/icons/Setting.svg" alt="" aria-hidden="true" width={20} height={20} />
               Settings
