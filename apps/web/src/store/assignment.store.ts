@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 import { QUESTION_TYPE_OPTIONS } from "@repo/shared/assignment";
 import type { AssignmentStore, QuestionRow } from "@/types/assignment-store.types";
 
@@ -13,7 +14,11 @@ const INITIAL_ROWS: QuestionRow[] = [
 
 const getDefaultDate = (): string => new Date().toISOString().split("T")[0] ?? "";
 
-export const useAssignmentStore = create<AssignmentStore>((set) => ({
+export const useAssignmentStore = create<
+  AssignmentStore,
+  [['zustand/devtools', never]]
+>(
+  devtools((set) => ({
   rows: INITIAL_ROWS,
   additionalInfo: "",
   subject: "",
@@ -81,5 +86,6 @@ export const useAssignmentStore = create<AssignmentStore>((set) => ({
       submitMessage: "",
     });
   },
-}));
+  }), { name: 'AssignmentStore' }),
+);
 

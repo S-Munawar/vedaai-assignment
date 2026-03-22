@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import Image from "next/image";
 import {
   notificationCreatedRealtimeEventSchema,
   notificationDeletedRealtimeEventSchema,
@@ -11,6 +12,7 @@ import {
 import { setUnreadCount } from "@/lib/notifications-unread";
 import { getRealtimeSocket } from "@/lib/realtime";
 import { useNotifications } from "@/hooks/useNotifications";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function NotificationsPage() {
   const {
@@ -32,7 +34,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     void loadNotifications();
-  }, []);
+  }, [loadNotifications]);
 
   const handleClearAll = async () => {
     if (!confirm("Are you sure you want to clear all notifications?")) {
@@ -113,7 +115,7 @@ export default function NotificationsPage() {
       socket.off("notification:read", onNotificationRead);
       socket.off("notifications:cleared", onNotificationsCleared);
     };
-  }, []);
+  }, [setRealtimeStatus, onRealtimeCreated, onRealtimeDeleted, onRealtimeRead, onRealtimeCleared]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
@@ -121,94 +123,125 @@ export default function NotificationsPage() {
     setUnreadCount(unreadCount);
   }, [unreadCount]);
 
+  const hasNotifications = notifications.length > 0;
+  const showHeader = isLoading || Boolean(errorMessage) || hasNotifications;
+  const showToolbar = !isLoading && !errorMessage && hasNotifications;
+  const showEmptyState = !isLoading && !errorMessage && !hasNotifications;
+  const showNotificationsList = !isLoading && !errorMessage && hasNotifications;
+
   return (
-    <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-4xl rounded-xl border border-gray-200 bg-white p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] sm:p-8">
-        <header className="mb-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-              {unreadCount > 0 && (
-                <p className="mt-1 text-sm text-gray-500">
-                  You have {unreadCount} unread notification{unreadCount !== 1 ? "s" : ""}
-                </p>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  realtimeStatus === "connected"
-                    ? "bg-green-100 text-green-700"
-                    : realtimeStatus === "reconnecting"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                Realtime: {realtimeStatus}
+    <section className="flex min-h-screen flex-col">
+      <div className="mx-auto flex w-full max-w-384 flex-1 flex-col gap-3 rounded-xl">
+        <PageHeader
+          title="Notifications"
+          subtitle="Track activity and stay up to date with assignment events."
+          showRealtime
+          realtimeStatus={realtimeStatus}
+          showHeader={showHeader}
+        />
+
+        {showToolbar ? (
+          <div className="flex h-16 w-full items-center justify-between gap-4 rounded-2xl bg-white px-4 text-sm">
+            <div className="flex items-center gap-3 text-primary">
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-off-white-primary">
+                <Image src="/icons/Bell.svg" alt="" aria-hidden="true" width={16} height={16} />
               </span>
-              {notifications.length > 0 && (
-                <button
-                  onClick={() => void handleClearAll()}
-                  className="rounded px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
-                >
-                  Clear All
-                </button>
-              )}
+              <div className="flex flex-col leading-tight">
+                <p className="text-sm font-bold">Inbox</p>
+                <p className="text-xs text-muted">
+                  {unreadCount > 0
+                    ? `${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`
+                    : "All caught up"}
+                </p>
+              </div>
             </div>
+
+            <button
+              type="button"
+              onClick={() => void handleClearAll()}
+              className="inline-flex h-10 items-center rounded-full bg-off-white-primary px-4 text-sm font-semibold text-primary transition hover:bg-gray-100"
+            >
+              Clear All
+            </button>
           </div>
-        </header>
-
-        {isLoading ? <p className="text-sm text-gray-500">Loading notifications...</p> : null}
-        {!isLoading && errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
-
-        {!isLoading && !errorMessage && notifications.length === 0 ? (
-          <p className="text-sm text-gray-500">No notifications yet.</p>
         ) : null}
 
-        {!isLoading && !errorMessage && notifications.length > 0 ? (
+        {isLoading ? (
+          <div className="rounded-2xl bg-white/70 p-5 text-sm text-muted">Loading notifications...</div>
+        ) : null}
+
+        {!isLoading && errorMessage ? (
+          <div className="rounded-2xl bg-white/70 p-5 text-sm text-red-600">{errorMessage}</div>
+        ) : null}
+
+        {showEmptyState ? (
+          <div className="rounded-2xl bg-white p-8 text-center shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-off-white-primary">
+              <Image src="/icons/Bell.svg" alt="" aria-hidden="true" width={18} height={18} />
+            </div>
+            <h2 className="text-base font-bold text-primary">No notifications yet</h2>
+            <p className="mt-1 text-sm text-muted">New assignment activity will show up here.</p>
+          </div>
+        ) : null}
+
+        {showNotificationsList ? (
           <div className="space-y-3">
             {notifications.map((notification) => (
-              <div
+              <article
                 key={notification.id}
-                className={`rounded-lg border p-4 ${
-                  notification.isRead ? "border-gray-200 bg-gray-50" : "border-blue-200 bg-blue-50"
+                className={`rounded-2xl border p-4 shadow-[0_12px_30px_rgba(15,23,42,0.04)] transition ${
+                  notification.isRead
+                    ? "border-border bg-white"
+                    : "border-primary-orange/30 bg-primary-orange/5"
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-gray-900">{notification.title}</h3>
-                      {!notification.isRead && <span className="inline-block h-2 w-2 rounded-full bg-blue-500"></span>}
+                      <h3 className="truncate text-sm font-bold text-primary">{notification.title}</h3>
+                      {!notification.isRead ? (
+                        <span className="inline-block h-2.5 w-2.5 rounded-full bg-primary-orange" />
+                      ) : null}
                     </div>
-                    <p className="mt-1 text-sm text-gray-700">{notification.message}</p>
-                    <p className="mt-2 text-xs text-gray-500">{new Date(notification.createdAt).toLocaleString()}</p>
+                    <p className="mt-1 text-sm text-secondary">{notification.message}</p>
+                    <p className="mt-2 text-xs text-muted">
+                      {new Date(notification.createdAt).toLocaleString()}
+                    </p>
                   </div>
-                  <div className="flex flex-shrink-0 gap-2">
-                    {!notification.isRead && (
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    {!notification.isRead ? (
                       <button
+                        type="button"
                         onClick={() => void markAsRead(notification.id)}
-                        className="rounded px-2 py-1 text-xs font-medium text-blue-600 hover:bg-blue-100"
+                        className="inline-flex h-8 items-center rounded-full bg-off-white-primary px-3 text-xs font-semibold text-primary transition hover:bg-gray-100"
                       >
-                        Read
+                        Mark as read
                       </button>
-                    )}
+                    ) : null}
+
                     <button
+                      type="button"
                       onClick={() => void deleteNotification(notification.id)}
                       disabled={deletingIds.has(notification.id)}
-                      className="rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex h-8 items-center rounded-full border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-600 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {deletingIds.has(notification.id) ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         ) : null}
 
-        <div className="mt-6">
-          <Link href="/assignments" className="text-sm font-medium text-gray-700 hover:text-black">
-            ← Back to assignments
+        <div className="mt-auto pt-2">
+          <Link
+            href="/assignments"
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-5 text-sm font-semibold text-primary transition hover:bg-off-white-primary"
+          >
+            <Image src="/icons/Arrow_Left.svg" alt="" aria-hidden="true" width={16} height={16} />
+            Back to assignments
           </Link>
         </div>
       </div>

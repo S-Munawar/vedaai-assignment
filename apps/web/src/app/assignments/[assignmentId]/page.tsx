@@ -1,8 +1,9 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   assignmentCreatedRealtimeEventSchema,
   deleteAssignmentResponseSchema,
@@ -13,6 +14,7 @@ import {
 } from "@repo/shared/assignment";
 import { getApiUrl } from "@/lib/api-base";
 import { getRealtimeSocket } from "@/lib/realtime";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function AssignmentDetailsPage() {
   const params = useParams<{ assignmentId: string }>();
@@ -24,6 +26,7 @@ export default function AssignmentDetailsPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
   const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
+  const articleRef = useRef<HTMLElement | null>(null);
 
   const loadAssignment = useCallback(async () => {
     if (!assignmentId) {
@@ -111,6 +114,99 @@ export default function AssignmentDetailsPage() {
     }
   };
 
+  const handleDownloadAsPdf = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const articleElement = articleRef.current;
+    if (!articleElement) {
+      return;
+    }
+
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    iframe.setAttribute("aria-hidden", "true");
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map((node) => node.outerHTML)
+      .join("\n");
+
+    doc.open();
+    doc.write(`
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Assignment</title>
+          ${styles}
+          <style>
+            @page {
+              margin: 12mm;
+            }
+
+            body {
+              margin: 0;
+              padding: 0;
+              background: #ffffff;
+            }
+
+            #assignment-print-article {
+              background: #ffffff !important;
+              border-radius: 0 !important;
+            }
+          </style>
+        </head>
+        <body>
+          ${articleElement.outerHTML}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    let hasPrinted = false;
+
+    const printAndCleanup = () => {
+      if (hasPrinted) {
+        return;
+      }
+
+      hasPrinted = true;
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+
+      window.setTimeout(() => {
+        if (iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      }, 800);
+    };
+
+    iframe.onload = printAndCleanup;
+
+    // Fallback in case onload already fired before callback assignment.
+    window.setTimeout(() => {
+      if (!iframe.parentNode || hasPrinted) {
+        return;
+      }
+
+      printAndCleanup();
+    }, 300);
+  };
+
   useEffect(() => {
     const socket = getRealtimeSocket();
 
@@ -165,7 +261,7 @@ export default function AssignmentDetailsPage() {
       socket.off("assignment:created", onAssignmentCreated);
       socket.off("assignment:deleted", onAssignmentDeleted);
     };
-  }, [assignmentId, loadAssignment]);
+  }, [assignmentId, loadAssignment, router]);
 
   const renderPaperLine = (line: string, index: number) => {
     const trimmed = line.trim();
@@ -312,95 +408,83 @@ export default function AssignmentDetailsPage() {
     };
   }
 
-  return (
-    <section className="min-h-screen bg-[radial-gradient(circle_at_top,#eef2ff_0%,#f5f5f5_40%,#efefef_100%)] px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-5xl rounded-2xl border border-gray-300 bg-white/90 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.14)] backdrop-blur sm:p-8">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Assignment</h1>
-            <span
-              className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                realtimeStatus === "connected"
-                  ? "bg-green-100 text-green-700"
-                  : realtimeStatus === "reconnecting"
-                    ? "bg-yellow-100 text-yellow-700"
-                    : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              Realtime: {realtimeStatus}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => void handleDeleteAssignment()}
-              disabled={isDeleting || isLoading}
-              className="rounded px-3 py-1 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </button>
-            <Link href="/assignments" className="text-sm font-medium text-gray-700 hover:text-black">
-              Back to assignments
-            </Link>
-          </div>
-        </div>
+  const showHeader = isLoading || Boolean(errorMessage) || Boolean(assignment);
 
-        {isLoading ? <p className="text-sm text-gray-500">Loading assignment...</p> : null}
-        {!isLoading && errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+  return (
+    <section className="flex min-h-screen flex-col">
+      <div className="mx-auto flex w-full flex-1 flex-col gap-3 rounded-xl">
+
+        {isLoading ? (
+          <div className="rounded-2xl bg-white/70 p-5 text-sm text-muted">Loading assignment...</div>
+        ) : null}
+
+        {!isLoading && errorMessage ? (
+          <div className="rounded-2xl bg-white/70 p-5 text-sm text-error">{errorMessage}</div>
+        ) : null}
 
         {!isLoading && !errorMessage && assignment ? (
-          <div className="space-y-6">
-            {(() => {
-              const headerMeta = resolveHeaderMeta(assignment);
+          <div className="flex flex-col gap-3 rounded-4xl bg-white p-5 md:bg-[#5E5E5E]">
+            <aside className="flex flex-col items-start justify-center gap-4 rounded-4xl bg-dark px-8 py-6 md:bg-dark/80 text-white">
+              <p className="text-base font-bold leading-relaxed">
+                Certainly, {assignment.createdBy.username}! Here are customized Question Paper for your CBSE Grade {assignment.classLevel} {assignment.subject} classes on the NCERT chapters: {assignment.chapterName}
+              </p>
 
-              return (
-            <article className="mx-auto max-w-[820px] rounded-lg border-2 border-dashed border-sky-400 bg-[#fbfbfb] p-5 text-gray-900 sm:p-8">
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleDownloadAsPdf}
+                  className="hidden items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-primary transition hover:opacity-90 md:inline-flex"
+                >
+                  <Image src="/icons/Download.svg" alt="Download" width={16} height={16} />
+                  <span>Download as PDF</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDownloadAsPdf}
+                  className="inline-flexitems-center justify-center rounded-full bg-transparent text-primary transition hover:opacity-90 md:hidden"
+                >
+                  <Image src="/mobile-icons/Download.svg" alt="Download" width={32} height={32} />
+                </button>
+              </div>
+            </aside>
+              {(() => {
+                const headerMeta = resolveHeaderMeta(assignment);
+
+                return (
+            <article ref={articleRef} id="assignment-print-article" className="flex flex-col rounded-4xl bg-off-white-primary p-5 text-primary font-['Inter',serif] md:bg-white">
               <header className="text-center font-['Times_New_Roman',serif]">
-                <h2 className="text-[34px] font-semibold leading-tight">{headerMeta.schoolName}</h2>
-                <p className="mt-1 text-base font-semibold">Subject: {headerMeta.subject}</p>
-                <p className="text-base font-semibold">Class: {headerMeta.classLevel}</p>
+                <h2 className="text-[32px] font-bold leading-tight text-primary">{headerMeta.schoolName}</h2>
+                <p className="mt-1 text-2xl font-semibold text-primary">Subject: {headerMeta.subject}</p>
+                <p className="text-2xl font-semibold text-primary">Class: {headerMeta.classLevel}</p>
               </header>
 
-              <div className="mt-6 flex items-center justify-between text-[13px] font-semibold">
+              <div className="mt-6 flex items-center justify-between text-lg font-semibold text-primary">
                 <span>{headerMeta.timeLine}</span>
                 <span>Maximum Marks: {headerMeta.maxMarks}</span>
               </div>
 
-              <p className="mt-4 text-[13px] text-gray-800">{headerMeta.instructionLine}</p>
+              <p className="mt-4 text-lg font-semibold text-primary">{headerMeta.instructionLine}</p>
 
-              <div className="mt-5 space-y-1 text-[13px] text-gray-800">
+              <div className="mt-5 space-y-1 text-lg font-semibold text-primary">
                 <p>Name: ____________</p>
                 <p>Roll Number: ____________</p>
                 <p>Class: {headerMeta.classLevel} Section: ____________</p>
               </div>
 
-              <div className="mt-8 font-['Times_New_Roman',serif]">
+              <div className="mt-8">
                 {assignment.generatedContent.body
                   .split("\n")
                   .map((line, index) => renderPaperLine(line, index))}
               </div>
             </article>
-              );
-            })()}
+                );
+              })()}
 
-            <aside className="rounded-lg border border-gray-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-gray-900">Question Type Breakdown</h3>
-              <div className="mt-2 space-y-2">
-                {assignment.questionTypes.map((row) => (
-                  <div
-                    key={row.id}
-                    className="flex items-center justify-between rounded-lg border border-gray-200 p-3 text-sm"
-                  >
-                    <span className="text-gray-800">{row.type}</span>
-                    <span className="text-gray-600">
-                      {row.questions} x {row.marks}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </aside>
           </div>
         ) : null}
       </div>
+
     </section>
   );
 }

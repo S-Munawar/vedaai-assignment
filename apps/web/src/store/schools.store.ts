@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 import {
   listSchoolsResponseSchema,
   schoolDetailsResponseSchema,
@@ -9,7 +10,11 @@ import {
 import { getApiUrl } from "@/lib/api-base";
 import type { SchoolStore } from "@/types/schools-store.types";
 
-export const useSchoolsStore = create<SchoolStore>((set) => ({
+export const useSchoolsStore = create<
+  SchoolStore,
+  [['zustand/devtools', never]]
+>(
+  devtools((set) => ({
   schools: [],
   selectedSchool: null,
   isLoadingSchools: false,
@@ -91,4 +96,5 @@ export const useSchoolsStore = create<SchoolStore>((set) => ({
     }
   },
   clearSchoolErrors: () => set({ schoolError: "", schoolDetailsError: "" }),
-}));
+  }), { name: 'SchoolsStore' }),
+);

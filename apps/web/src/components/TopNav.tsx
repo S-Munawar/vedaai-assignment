@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -20,7 +21,6 @@ import {
   subscribeUnreadCount,
 } from '@/lib/notifications-unread';
 import { isAuthPage, resolvePageName } from '@/constants/navigation.constants';
-import { ArrowLeft, Home, Bell, ChevronDown, Menu } from 'lucide-react';
 
 function getInitials(user: AuthTokenPayload | null): string {
   const name = user?.username?.trim();
@@ -181,14 +181,14 @@ export default function TopNav() {
   }
 
   return (
-    <header className="sticky top-0 z-40 rounded-2xl bg-white px-6 sm:bg-white-75">
+    <header className="sticky top-0 z-40 rounded-2xl bg-white px-6 sm:bg-white/75">
       <div className="flex h-16 items-center justify-between gap-2.5">
-        <div className="flex items-center gap-3 sm:hidden">
-          <img src="/vedaAI.png" alt="VedaAI Logo" className="rounded-xl w-10 h-10" />
+        <div className="flex items-center gap-3 md:hidden">
+          <img src="/VedeMobile.svg" alt="VedaAI Logo" className="rounded-xl w-10 h-10" />
           <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
         </div>
 
-        <div className="hidden items-center gap-3 sm:flex">
+        <div className="hidden items-center gap-3 md:flex">
           <button
             type="button"
             onClick={handleGoBack}
@@ -196,11 +196,11 @@ export default function TopNav() {
             disabled={isBackDisabled}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white"
           >
-            <ArrowLeft className="text-primary" />
+            <Image src="/icons/Arrow_Left.svg" alt="" aria-hidden="true" width={20} height={20} />
           </button>
 
           <div className="flex items-center gap-2 text-disabled text-base font-semibold">
-            <Home className="text-disabled" />
+            <Image src="/icons/Home.svg" alt="" aria-hidden="true" width={20} height={20} />
             <h1>{pageName}</h1>
           </div>
         </div>
@@ -209,16 +209,16 @@ export default function TopNav() {
           <Link
             href="/notifications"
             aria-label="Notifications"
-            className="relative bg-off-white inline-flex h-9 w-9 items-center justify-center rounded-full"
+            className="relative bg-off-white-primary inline-flex h-9 w-9 items-center justify-center rounded-full"
           >
-            <Bell />
+            <Image src="/icons/Bell.svg" alt="" aria-hidden="true" width={20} height={20} />
             {unreadCount > 0 ? (
               <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-primary-orange" />
             ) : null}
           </Link>
 
           <details className="group relative">
-            <summary className="flex cursor-pointer list-none items-center gap rounded-xl bg-white px-2 py-1 sm:gap-2 sm:px-3 sm:py-1.5 sm:shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
+            <summary className="flex cursor-pointer list-none items-center gap rounded-xl bg-white px-2 py-1 md:gap-2 md:px-3 md:py-1.5 md:shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
               {authUser?.profileImage ? (
                 <img
                   src={authUser.profileImage}
@@ -230,10 +230,17 @@ export default function TopNav() {
                   {getInitials(authUser)}
                 </span>
               )}
-              <span className="hidden text-sm font-medium text-gray-700 sm:block">
+              <span className="hidden text-sm font-medium text-gray-700 md:block">
                 {authUser?.username || 'Profile'}
               </span>
-              <ChevronDown className="hidden text-primary sm:block" />
+              <Image
+                src="/icons/Chevron.svg"
+                alt=""
+                aria-hidden="true"
+                width={10}
+                height={6}
+                className="hidden md:block"
+              />
             </summary>
 
             <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white p-3 border border-gray-100">
@@ -259,9 +266,9 @@ export default function TopNav() {
           <button
             type="button"
             aria-label="Open menu"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-off-white sm:hidden"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full md:hidden"
           >
-            <Menu className="text-primary" />
+            <Image src="/icons/Menu.svg" alt="" aria-hidden="true" width={20} height={20} />
           </button>
         </div>
       </div>

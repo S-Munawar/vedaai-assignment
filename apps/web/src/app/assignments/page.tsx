@@ -4,54 +4,62 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   assignmentCreatedRealtimeEventSchema,
-  deleteAssignmentResponseSchema,
   assignmentDeletedRealtimeEventSchema,
-  assignmentIntakeErrorResponseSchema,
-  assignmentListResponseSchema,
-  type AssignmentListItem,
 } from "@repo/shared/assignment";
-import { getApiUrl } from "@/lib/api-base";
 import { getRealtimeSocket } from "@/lib/realtime";
-import Image from 'next/image';
-import { Plus } from 'lucide-react';
-
+import Image from "next/image";
+import { useAssignmentsList } from "@/hooks/useAssignmentsList";
+import { PageHeader } from "@/components/PageHeader";
 
 export default function Assignments() {
-  const [assignments, setAssignments] = useState<AssignmentListItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedClass, setSelectedClass] = useState("all");
-  const [selectedSubject, setSelectedSubject] = useState("all");
-  const [selectedCreator, setSelectedCreator] = useState("all");
+  const {
+    assignments,
+    isLoading,
+    errorMessage,
+    deletingIds,
+    searchQuery,
+    selectedClass,
+    selectedSubject,
+    selectedCreator,
+    isFiltersOpen,
+    realtimeStatus,
+    loadAssignments,
+    deleteAssignment,
+    setSearchQuery,
+    setSelectedClass,
+    setSelectedSubject,
+    setSelectedCreator,
+    setIsFiltersOpen,
+    setRealtimeStatus,
+    onRealtimeCreated,
+    onRealtimeDeleted,
+  } = useAssignmentsList();
+
   const [draftClass, setDraftClass] = useState("all");
   const [draftSubject, setDraftSubject] = useState("all");
   const [draftCreator, setDraftCreator] = useState("all");
-  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
+  const [openMenuAssignmentId, setOpenMenuAssignmentId] = useState<string | null>(null);
 
   const classOptions = useMemo(() => {
     return Array.from(
-      new Set(assignments.map((assignment) => assignment.classLevel?.trim() || "").filter(Boolean)),
+      new Set(assignments.map((a) => a.classLevel?.trim() || "").filter(Boolean)),
     ).sort((a, b) => Number(a) - Number(b));
   }, [assignments]);
 
   const subjectOptions = useMemo(() => {
     return Array.from(
-      new Set(assignments.map((assignment) => assignment.subject?.trim() || "").filter(Boolean)),
+      new Set(assignments.map((a) => a.subject?.trim() || "").filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
   }, [assignments]);
 
   const creatorOptions = useMemo(() => {
     return Array.from(
-      new Set(assignments.map((assignment) => assignment.createdBy.username.trim()).filter(Boolean)),
+      new Set(assignments.map((a) => a.createdBy.username.trim()).filter(Boolean)),
     ).sort((a, b) => a.localeCompare(b));
   }, [assignments]);
 
   const filteredAssignments = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase();
-
     return assignments.filter((assignment) => {
       const classLevel = assignment.classLevel?.trim() || "";
       const subject = assignment.subject?.trim() || "";
@@ -61,21 +69,10 @@ export default function Assignments() {
       const matchesSubject = selectedSubject === "all" || subject === selectedSubject;
       const matchesCreator = selectedCreator === "all" || creator === selectedCreator;
 
-      if (!matchesClass || !matchesSubject || !matchesCreator) {
-        return false;
-      }
+      if (!matchesClass || !matchesSubject || !matchesCreator) return false;
+      if (!normalizedQuery) return true;
 
-      if (!normalizedQuery) {
-        return true;
-      }
-
-      const searchText = [
-        assignment.chapterName,
-        classLevel,
-        subject,
-        creator,
-        assignment.dueDate,
-      ]
+      const searchText = [assignment.chapterName, classLevel, subject, creator, assignment.dueDate]
         .join(" ")
         .toLowerCase();
 
@@ -84,99 +81,50 @@ export default function Assignments() {
   }, [assignments, searchQuery, selectedClass, selectedSubject, selectedCreator]);
 
   const activeFiltersCount = [selectedClass, selectedSubject, selectedCreator].filter(
-    (value) => value !== "all",
+    (v) => v !== "all",
   ).length;
 
-  useEffect(() => {
-    async function loadAssignments() {
-      setIsLoading(true);
-      setErrorMessage("");
+  const hasAssignments = assignments.length > 0;
+  const hasError = Boolean(errorMessage);
+  const hasFilteredAssignments = filteredAssignments.length > 0;
 
-      try {
-        const response = await fetch(getApiUrl("/assignments"), {
-          method: "GET",
-          credentials: "include",
-        });
+  const showHeader = isLoading || hasError || hasAssignments;
+  const showToolbar = !isLoading && !hasError && hasAssignments;
+  const showFiltersModal = isFiltersOpen && hasAssignments;
+  const showEmptyState = !isLoading && !hasError && !hasAssignments;
+  // FIX: added `hasAssignments` to prevent this firing on the empty state
+  const showNoResults = !isLoading && !hasError && hasAssignments && !hasFilteredAssignments;
+  const showAssignmentsGrid = !isLoading && !hasError && hasFilteredAssignments;
+  const showFooterAction = hasAssignments;
 
-        if (!response.ok) {
-          const rawError = await response.json().catch(() => null);
-          const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
-          setErrorMessage(errorParsed.success ? errorParsed.data.error : "Failed to load assignments");
-          return;
-        }
+  const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString() : "-");
 
-        const raw = await response.json().catch(() => null);
-        const parsed = assignmentListResponseSchema.safeParse(raw);
+  const openFilters = () => {
+    setDraftClass(selectedClass);
+    setDraftSubject(selectedSubject);
+    setDraftCreator(selectedCreator);
+    setIsFiltersOpen(true);
+  };
 
-        if (!parsed.success) {
-          setErrorMessage("Unexpected response while loading assignments");
-          return;
-        }
+  const resetDraftFilters = () => {
+    setDraftClass("all");
+    setDraftSubject("all");
+    setDraftCreator("all");
+  };
 
-        setAssignments(parsed.data.assignments);
-      } catch {
-        setErrorMessage("Could not reach backend endpoint.");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    void loadAssignments();
-  }, []);
-
-  const handleDeleteAssignment = async (assignmentId: string) => {
-    if (!confirm("Are you sure you want to delete this assignment? This action cannot be undone.")) {
-      return;
-    }
-
-    setDeletingIds((prev) => new Set(prev).add(assignmentId));
-
-    try {
-      const response = await fetch(getApiUrl(`/assignments/${assignmentId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
-        const errorMsg = errorParsed.success ? errorParsed.data.error : "Failed to delete assignment";
-        setErrorMessage(errorMsg);
-        setDeletingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(assignmentId);
-          return next;
-        });
-        return;
-      }
-
-      const rawSuccess = await response.json().catch(() => null);
-      const parsedSuccess = deleteAssignmentResponseSchema.safeParse(rawSuccess);
-
-      if (!parsedSuccess.success) {
-        setErrorMessage("Unexpected response while deleting assignment");
-        setDeletingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(assignmentId);
-          return next;
-        });
-        return;
-      }
-
-      // The real-time event will handle removing from the list
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(assignmentId);
-        return next;
-      });
-    }
+  const applyDraftFilters = () => {
+    setSelectedClass(draftClass);
+    setSelectedSubject(draftSubject);
+    setSelectedCreator(draftCreator);
+    setIsFiltersOpen(false);
   };
 
   useEffect(() => {
-    const socket = getRealtimeSocket();
+    void loadAssignments();
+  }, [loadAssignments]);
 
+  useEffect(() => {
+    const socket = getRealtimeSocket();
     if (!socket) {
       setRealtimeStatus("disconnected");
       return;
@@ -186,35 +134,12 @@ export default function Assignments() {
 
     const onAssignmentCreated = (payload: unknown) => {
       const parsed = assignmentCreatedRealtimeEventSchema.safeParse(payload);
-
-      if (!parsed.success) {
-        return;
-      }
-
-      const incoming = parsed.data.assignment;
-
-      setAssignments((prev) => {
-        if (prev.some((assignment) => assignment.id === incoming.id)) {
-          return prev;
-        }
-
-        return [incoming, ...prev];
-      });
+      if (parsed.success) onRealtimeCreated(parsed.data.assignment);
     };
 
     const onAssignmentDeleted = (payload: unknown) => {
       const parsed = assignmentDeletedRealtimeEventSchema.safeParse(payload);
-
-      if (!parsed.success) {
-        return;
-      }
-
-      setAssignments((prev) => prev.filter((assignment) => assignment.id !== parsed.data.assignmentId));
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(parsed.data.assignmentId);
-        return next;
-      });
+      if (parsed.success) onRealtimeDeleted(parsed.data.assignmentId);
     };
 
     const onConnect = () => setRealtimeStatus("connected");
@@ -234,78 +159,72 @@ export default function Assignments() {
       socket.off("assignment:created", onAssignmentCreated);
       socket.off("assignment:deleted", onAssignmentDeleted);
     };
-  }, []);
+  }, [setRealtimeStatus, onRealtimeCreated, onRealtimeDeleted]);
 
   return (
-    <section className="min-h-screen bg-background px-4 py-8 sm:px-8">
-      <div className="mx-auto max-w-5xl rounded-xl p-6 sm:p-8">
-        {isLoading || errorMessage || assignments.length > 0 ? (
-          <header className="mb-6">
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-medium ${
-                  realtimeStatus === "connected"
-                    ? "bg-green-100 text-green-700"
-                    : realtimeStatus === "reconnecting"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-gray-100 text-gray-700"
-                }`}
-              >
-                Realtime: {realtimeStatus}
-              </span>
-            </div>
-            <p className="mt-1 text-sm text-gray-500">Assignments created by teachers in your school.</p>
-          </header>
-        ) : null}
+    <section
+      className="flex min-h-screen flex-col"
+      onClick={() => setOpenMenuAssignmentId(null)}
+    >
+      <div className="mx-auto flex w-full max-w-384 flex-1 flex-col gap-3 rounded-xl">
+        <PageHeader
+          title="Assignments"
+          subtitle="Manage and create assignments for your classes."
+          showRealtime
+          realtimeStatus={realtimeStatus}
+          showHeader={showHeader}
+        />
 
         {isLoading ? <p className="text-sm text-gray-500">Loading assignments...</p> : null}
-        {!isLoading && errorMessage ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
+        {!isLoading && hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
 
-        {!isLoading && !errorMessage && assignments.length > 0 ? (
-          <div className="mb-5 rounded-xl border border-gray-200 bg-[#f2f2f2] p-2">
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setDraftClass(selectedClass);
-                  setDraftSubject(selectedSubject);
-                  setDraftCreator(selectedCreator);
-                  setIsFiltersOpen(true);
-                }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-gray-600 transition hover:bg-white"
-              >
-                <span aria-hidden="true">▿</span>
-                <span>Filter By</span>
-                {activeFiltersCount > 0 ? (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-gray-800 px-1 text-[10px] font-semibold text-white">
-                    {activeFiltersCount}
-                  </span>
-                ) : null}
-              </button>
+        {showToolbar ? (
+          <div className="flex h-16 w-full items-center justify-between gap-4 rounded-2xl bg-white px-4 text-sm font-bold text-disabled">
+            <button
+              type="button"
+              onClick={openFilters}
+              className="inline-flex items-center gap-2 rounded-lg px-2 py-1 transition hover:bg-muted/20"
+            >
+              <Image src="/icons/Filter.svg" alt="" aria-hidden="true" width={16} height={16} />
+              <span className="md:hidden">Filter</span>
+              <span className="hidden md:inline">Filter By</span>
+              {activeFiltersCount > 0 ? (
+                <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs text-white">
+                  {activeFiltersCount}
+                </span>
+              ) : null}
+            </button>
 
-              <div className="relative w-full max-w-xs">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">⌕</span>
-                <input
-                  id="assignment-search"
-                  type="text"
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search Assignment"
-                  className="h-9 w-full rounded-full border border-gray-300 bg-white pl-8 pr-3 text-xs text-gray-700 outline-none transition focus:border-gray-400"
-                />
-              </div>
+            <div className="flex w-full max-w-md items-center gap-3 rounded-full border border-border bg-background p-3 text-disabled">
+              <Image src="/icons/Search.svg" alt="" aria-hidden="true" width={16} height={16} />
+              <input
+                id="assignment-search"
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search Name"
+                className="w-full bg-transparent outline-none placeholder:text-disabled md:hidden"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search Assignments"
+                className="hidden w-full bg-transparent outline-none placeholder:text-disabled md:block"
+              />
             </div>
           </div>
         ) : null}
 
-        {isFiltersOpen && assignments.length > 0 ? (
+        {showFiltersModal ? (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-lg rounded-xl border border-gray-200 bg-white p-5 shadow-xl">
               <div className="mb-4 flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Filters</h2>
-                  <p className="mt-1 text-sm text-gray-500">Set filters and apply them to the assignments list.</p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Set filters and apply them to the assignments list.
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -318,57 +237,66 @@ export default function Assignments() {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="assignment-class-filter" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <label
+                    htmlFor="assignment-class-filter"
+                    className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500"
+                  >
                     Class
                   </label>
                   <select
                     id="assignment-class-filter"
                     value={draftClass}
-                    onChange={(event) => setDraftClass(event.target.value)}
+                    onChange={(e) => setDraftClass(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-gray-400"
                   >
                     <option value="all">All classes</option>
-                    {classOptions.map((classLevel) => (
-                      <option key={classLevel} value={classLevel}>
-                        Class {classLevel}
+                    {classOptions.map((c) => (
+                      <option key={c} value={c}>
+                        Class {c}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label htmlFor="assignment-subject-filter" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <label
+                    htmlFor="assignment-subject-filter"
+                    className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500"
+                  >
                     Subject
                   </label>
                   <select
                     id="assignment-subject-filter"
                     value={draftSubject}
-                    onChange={(event) => setDraftSubject(event.target.value)}
+                    onChange={(e) => setDraftSubject(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-gray-400"
                   >
                     <option value="all">All subjects</option>
-                    {subjectOptions.map((subject) => (
-                      <option key={subject} value={subject}>
-                        {subject}
+                    {subjectOptions.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
                       </option>
                     ))}
                   </select>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label htmlFor="assignment-creator-filter" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  <label
+                    htmlFor="assignment-creator-filter"
+                    className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500"
+                  >
                     Creator
                   </label>
                   <select
                     id="assignment-creator-filter"
                     value={draftCreator}
-                    onChange={(event) => setDraftCreator(event.target.value)}
+                    onChange={(e) => setDraftCreator(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 outline-none transition focus:border-gray-400"
                   >
                     <option value="all">All creators</option>
-                    {creatorOptions.map((creator) => (
-                      <option key={creator} value={creator}>
-                        {creator}
+                    {creatorOptions.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
                       </option>
                     ))}
                   </select>
@@ -378,16 +306,11 @@ export default function Assignments() {
               <div className="mt-5 flex items-center justify-between gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setDraftClass("all");
-                    setDraftSubject("all");
-                    setDraftCreator("all");
-                  }}
+                  onClick={resetDraftFilters}
                   className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
                 >
                   Clear
                 </button>
-
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -398,12 +321,7 @@ export default function Assignments() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      setSelectedClass(draftClass);
-                      setSelectedSubject(draftSubject);
-                      setSelectedCreator(draftCreator);
-                      setIsFiltersOpen(false);
-                    }}
+                    onClick={applyDraftFilters}
                     className="rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black"
                   >
                     Apply filters
@@ -414,79 +332,130 @@ export default function Assignments() {
           </div>
         ) : null}
 
-        {!isLoading && !errorMessage && assignments.length === 0 ? (
+        {showEmptyState ? (
           <div className="flex flex-col items-center justify-center gap-8 py-12 text-center">
             <div className="flex flex-col items-center gap-3">
               <Image
                 src="/no-assignments.png"
-                alt="Development in progress"
+                alt="No assignments yet"
                 width={260}
                 height={260}
                 className="mx-auto"
                 priority
               />
               <div className="mx-auto flex max-w-xl flex-col gap-2 px-4">
-                <h1 className="text-primary text-xl font-bold">No assignments yet</h1>
-                <p className="text-secondary text-lg font-normal whitespace-normal wrap-break-word">
-                  Create your first assignment to start collecting and grading student submissions. You can set up
-                  rubrics, define marking criteria, and let AI assist with grading.
+                <h1 className="text-xl font-bold text-primary">No assignments yet</h1>
+                <p className="text-lg font-normal text-secondary">
+                  Create your first assignment to start collecting and grading student submissions.
+                  You can set up rubrics, define marking criteria, and let AI assist with grading.
                 </p>
               </div>
             </div>
-
             <Link
               href="/create-assignment"
               className="inline-flex items-center gap-1 rounded-full bg-primary px-6 py-3 text-white"
             >
-              <Plus className="mr-2 h-4 w-4" />
+              <Image src="/icons/Plus.svg" alt="" aria-hidden="true" width={16} height={16} className="mr-2" />
               <span>Create New First Assignment</span>
             </Link>
           </div>
         ) : null}
 
-        {!isLoading && !errorMessage && assignments.length > 0 && filteredAssignments.length === 0 ? (
-          <p className="text-sm text-gray-500">No assignments match the current search and filters.</p>
+        {showNoResults ? (
+          <p className="text-sm text-gray-500">
+            No assignments match the current search and filters.
+          </p>
         ) : null}
 
-        {!isLoading && !errorMessage && filteredAssignments.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
+        {showAssignmentsGrid ? (
+          // FIX: wrap all cards in a single ref'd div for the click-outside handler
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {filteredAssignments.map((assignment) => (
               <div
                 key={assignment.id}
-                className="rounded-xl border border-gray-200 bg-white p-4 transition hover:border-gray-300 hover:shadow-sm"
+                className="rounded-3xl border border-gray-200 bg-white p-3 transition hover:border-gray-300 hover:shadow-sm"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <Link
-                    href={`/assignments/${assignment.id}`}
-                    className="flex-1 text-left"
-                  >
-                    <h2 className="text-base font-semibold text-gray-900">{assignment.chapterName}</h2>
-                    <p className="mt-1 text-xs text-gray-500">
-                      Class {assignment.classLevel || "-"} • {assignment.subject || "-"}
+                {/* FIX: min-h-23 is non-standard — replaced with min-h-[5.75rem] */}
+                <div className="flex min-h-[5.75rem] flex-col justify-between gap-4">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link href={`/assignments/${assignment.id}`} className="flex-1 text-left">
+                      <h2 className="text-base font-semibold text-gray-900">
+                        {assignment.chapterName}
+                      </h2>
+                    </Link>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setOpenMenuAssignmentId((current) =>
+                            current === assignment.id ? null : assignment.id,
+                          );
+                        }}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded text-gray-500 hover:bg-gray-100"
+                        aria-label="More options"
+                      >
+                        <Image src="/icons/MoreVertical.svg" alt="" aria-hidden="true" width={16} height={16} />
+                      </button>
+
+                      {openMenuAssignmentId === assignment.id ? (
+                        <div
+                          className="absolute right-6 top-4 z-20 flex flex-col gap-1 rounded-2xl border border-gray-200 bg-white p-2 text-primary shadow-lg"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <Link
+                            href={`/assignments/${assignment.id}`}
+                            onClick={() => setOpenMenuAssignmentId(null)}
+                            className="whitespace-nowrap rounded-md px-2 py-1 text-left text-sm hover:bg-off-white-primary"
+                          >
+                            View Assignment
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              void deleteAssignment(assignment.id);
+                              setOpenMenuAssignmentId(null);
+                            }}
+                            disabled={deletingIds.has(assignment.id)}
+                            className="whitespace-nowrap rounded-md px-2 py-1 text-left text-sm text-error hover:bg-off-white-primary disabled:opacity-50"
+                          >
+                            {deletingIds.has(assignment.id) ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-2">
+                    <p className="text-xs text-muted">
+                      <span className="font-bold text-primary">Assigned on:</span>{" "}
+                      {formatDate(assignment.createdAt)}
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">Due: {assignment.dueDate}</p>
-                    <p className="mt-1 text-xs text-gray-500">Created by: {assignment.createdBy.username}</p>
-                    <p className="mt-2 text-sm text-gray-700">
-                      {assignment.totalQuestions} questions • {assignment.totalMarks} marks • {assignment.questionTypeCount} types
+                    <p className="text-xs text-gray-500">
+                      <span className="font-bold text-primary">Due:</span> {assignment.dueDate}
                     </p>
-                  </Link>
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      void handleDeleteAssignment(assignment.id);
-                    }}
-                    disabled={deletingIds.has(assignment.id)}
-                    className="mt-1 shrink-0 rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
-                    title="Delete assignment"
-                  >
-                    {deletingIds.has(assignment.id) ? "Deleting..." : "Delete"}
-                  </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : null}
       </div>
+
+      {showFooterAction ? (
+        // FIX: h-18 is non-standard → h-20; bg-linear-to-b → bg-gradient-to-b
+        <div className="sticky bottom-0 hidden h-20 w-full items-center justify-center sm:flex">
+          <div className="absolute inset-0 bg-gradient-to-b from-white/0 to-white" />
+          {/* FIX: was a plain <button>, should be a <Link> since it navigates */}
+          <Link
+            href="/create-assignment"
+            className="relative inline-flex items-center gap-1 rounded-full bg-primary px-6 py-3 text-white"
+          >
+            <Image src="/icons/Plus.svg" alt="" aria-hidden="true" width={16} height={16} className="mr-2" />
+            <span>Create Assignment</span>
+          </Link>
+        </div>
+      ) : null}
     </section>
   );
 }

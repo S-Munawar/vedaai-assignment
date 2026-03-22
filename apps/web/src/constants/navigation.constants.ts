@@ -1,14 +1,18 @@
-import { Home, Users, FileText, Bot, Clock } from 'lucide-react';
-
 export const AUTH_PAGE_PREFIXES = ['/login', '/register', '/complete-registration'] as const;
 
+export type SidebarNavItem = {
+  href: string;
+  label: string;
+  iconSrc: string;
+};
+
 export const SIDEBAR_NAV_ITEMS = [
-  { href: '/', label: 'Home', icon: Home },
-  { href: '/my-groups', label: 'My Groups', icon: Users },
-  { href: '/assignments', label: 'Assignments', icon: FileText },
-  { href: '/ai-teachers-toolkit', label: "AI Teacher's Toolkit", icon: Bot },
-  { href: '/my-library', label: 'My Library', icon: Clock },
-] as const;
+  { href: '/', label: 'Home', iconSrc: '/icons/Home.svg' },
+  { href: '/my-groups', label: 'My Groups', iconSrc: '/icons/MyGroups.svg' },
+  { href: '/assignments', label: 'Assignments', iconSrc: '/icons/Assignments.svg' },
+  { href: '/ai-teachers-toolkit', label: "AI Teacher's Toolkit", iconSrc: '/icons/Toolkit.svg' },
+  { href: '/my-library', label: 'My Library', iconSrc: '/icons/MyLibrary.svg' },
+] satisfies ReadonlyArray<SidebarNavItem>;
 
 const ROUTE_NAMES: Array<{ match: (pathname: string) => boolean; name: string }> = [
   { match: (pathname) => pathname === '/', name: 'Home' },

@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { devtools } from "zustand/middleware";
 import {
   clearNotificationsResponseSchema,
   deleteNotificationResponseSchema,
@@ -12,7 +13,11 @@ import { getApiUrl } from "@/lib/api-base";
 import { setUnreadCount } from "@/lib/notifications-unread";
 import type { NotificationsStore } from "@/types/notifications-store.types";
 
-export const useNotificationsStore = create<NotificationsStore>((set) => ({
+export const useNotificationsStore = create<
+  NotificationsStore,
+  [['zustand/devtools', never]]
+>(
+  devtools((set) => ({
   notifications: [],
   isLoading: true,
   errorMessage: "",
@@ -171,4 +176,5 @@ export const useNotificationsStore = create<NotificationsStore>((set) => ({
       ),
     })),
   onRealtimeCleared: () => set({ notifications: [] }),
-}));
+  }), { name: 'NotificationsStore' }),
+);

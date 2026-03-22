@@ -2,6 +2,7 @@
 
 import { signInWithPopup } from 'firebase/auth';
 import { create } from 'zustand';
+import { devtools } from 'zustand/middleware';
 import {
   authLogoutErrorResponseSchema,
   authLogoutSuccessResponseSchema,
@@ -18,7 +19,11 @@ import type { AuthStore } from '@/types/auth-store.types';
 
 const DEFAULT_SCHOOL = '';
 
-export const useAuthStore = create<AuthStore>((set, get) => ({
+export const useAuthStore = create<
+  AuthStore,
+  [['zustand/devtools', never]]
+>(
+  devtools((set, get) => ({
   loginForm: {
     username: '',
     password: '',
@@ -329,4 +334,5 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       });
     }
   },
-}));
+  }), { name: 'AuthStore' }),
+);

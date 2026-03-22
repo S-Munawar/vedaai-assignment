@@ -20,8 +20,7 @@
   --color-disabled: var(--bg-disabled);
   --color-hover: var(--bg-off-white-20);
   --color-off-white: var(--bg-off-white);
-  --color-bg-white-25: var(--bg-white-25);
-  --color-white-75: var(--bg-white-75);
+  --color-off-white-primary: var(--bg-off-white-primary);
   --color-dark: var(--bg-dark);
   --color-surface: var(--surface-primary);
 
@@ -50,8 +49,9 @@
 
     /* --- Backgrounds --- */
     --bg-white: #ffffff;
-    --bg-white-25: #ffffff40;
-    --bg-off-white: #f0f0f0;
+    --bg-white-25: rgba(255, 255, 255, 0.25);
+    --bg-off-white: #cecece;
+    --bg-off-white-primary: #F0F0F0;
     --bg-off-white-20: rgb(240 240 240 / 20%);
     --bg-white-75: rgba(255, 255, 255, 0.75);
     --bg-disabled: #a9a9a9;
@@ -150,6 +150,20 @@
 
   .no-scrollbar::-webkit-scrollbar {
     display: none;
+  }
+
+  /* 1px dashed border with 8px dash / 8px gap */
+  .border-dashed-8 {
+    border: 1px solid transparent;
+    border-radius: var(--radius-xl);
+    background-image:
+      repeating-linear-gradient(90deg, rgb(209 213 219) 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(90deg, rgb(209 213 219) 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(180deg, rgb(209 213 219) 0 8px, transparent 8px 16px),
+      repeating-linear-gradient(180deg, rgb(209 213 219) 0 8px, transparent 8px 16px);
+    background-position: top, bottom, left, right;
+    background-size: 100% 1px, 100% 1px, 1px 100%, 1px 100%;
+    background-repeat: no-repeat;
   }
 
   .imgDark {

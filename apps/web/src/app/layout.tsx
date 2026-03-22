@@ -26,9 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <div className="flex h-screen bg-background">
+        <div className="flex h-screen bg-off-white/50 md:bg-background">
           <Sidebar />
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background p-3">
+          <div className="flex min-h-0 flex-1 flex-col gap overflow-hidden p-3 gap-5.5">
             <TopNav />
             <main className="flex-1 min-h-0 overflow-auto no-scrollbar">{children}</main>
           </div>
