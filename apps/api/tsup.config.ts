@@ -8,7 +8,7 @@ export default defineConfig({
   clean: true,
   dts: false,
   shims: true,
-  external: ['@repo/shared', 'express', 'mongoose', 'cors', 'dotenv', 'firebase-admin', 'socket.io', 'zod', 'jose', 'bcryptjs'],
+  external: ['express', 'mongoose', 'cors', 'dotenv', 'firebase-admin', 'socket.io', 'zod', 'jose', 'bcryptjs'],
   esbuildOptions(options) {
     options.alias = {
       '@': './src',
