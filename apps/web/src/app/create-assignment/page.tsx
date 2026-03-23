@@ -397,7 +397,7 @@ export function AssignmentDetailsForm() {
             Preparing your assignment...
           </p>
           <p className="text-lg font-normal text-primary">
-            I am using a LOCAL LLM model so, this may take a while to process.
+            I am using a LOCAL LLM model. So, this may take a while to process.
           </p>
         </div>
       </section>
