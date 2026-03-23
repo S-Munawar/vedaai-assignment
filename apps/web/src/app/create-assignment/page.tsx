@@ -21,6 +21,38 @@ import {
 import { useAssignmentStore } from "@/store/assignment.store";
 import { PageHeader } from "@/components/PageHeader";
 
+type SpeechRecognitionAlternativeLike = {
+  transcript: string;
+};
+
+type SpeechRecognitionResultLike = {
+  0: SpeechRecognitionAlternativeLike;
+  length: number;
+};
+
+type SpeechRecognitionEventLike = {
+  resultIndex: number;
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+type BrowserSpeechRecognition = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+declare global {
+  interface Window {
+    SpeechRecognition?: new () => BrowserSpeechRecognition;
+    webkitSpeechRecognition?: new () => BrowserSpeechRecognition;
+  }
+}
+
 // Mobile Counter Component
 function CounterControl({
   label,
@@ -139,7 +171,10 @@ export function AssignmentDetailsForm() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
   const classDropdownRef = useRef<HTMLDivElement | null>(null);
+  const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
+  const additionalInfoRef = useRef(additionalInfo);
   const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const realtimeStatus = useRealtimeStatus();
 
   const chapterSuggestions = useMemo(
@@ -162,6 +197,10 @@ export function AssignmentDetailsForm() {
   };
 
   useEffect(() => {
+    additionalInfoRef.current = additionalInfo;
+  }, [additionalInfo]);
+
+  useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
       if (!classDropdownRef.current) {
         return;
@@ -175,6 +214,82 @@ export function AssignmentDetailsForm() {
     document.addEventListener("mousedown", handleOutsideClick);
     return () => document.removeEventListener("mousedown", handleOutsideClick);
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const handleMicClick = () => {
+    const SpeechRecognitionConstructor =
+      window.SpeechRecognition ?? window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
+      setSubmitMessage("❌ Voice input is not supported on this browser.");
+      return;
+    }
+
+    if (isListening) {
+      speechRecognitionRef.current?.stop();
+      setIsListening(false);
+      setSubmitMessage("");
+      return;
+    }
+
+    if (!speechRecognitionRef.current) {
+      const recognition = new SpeechRecognitionConstructor();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onresult = (event) => {
+        const transcriptParts: string[] = [];
+
+        for (let index = event.resultIndex; index < event.results.length; index += 1) {
+          const transcript = event.results[index]?.[0]?.transcript?.trim();
+
+          if (transcript) {
+            transcriptParts.push(transcript);
+          }
+        }
+
+        if (transcriptParts.length === 0) {
+          return;
+        }
+
+        const combinedTranscript = transcriptParts.join(" ");
+        const existingText = additionalInfoRef.current.trim();
+        const nextText = existingText
+          ? `${existingText} ${combinedTranscript}`
+          : combinedTranscript;
+
+        setAdditionalInfo(nextText);
+      };
+
+      recognition.onerror = () => {
+        setSubmitMessage("❌ Could not capture voice input. Please try again.");
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      speechRecognitionRef.current = recognition;
+    }
+
+    try {
+      speechRecognitionRef.current.start();
+      setIsListening(true);
+      setSubmitMessage("🎙️ Listening... Tap the mic again to stop.");
+    } catch {
+      setIsListening(false);
+      setSubmitMessage("❌ Could not start voice input.");
+    }
+  };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -687,8 +802,28 @@ export function AssignmentDetailsForm() {
                   }
                   rows={4}
                   placeholder="e.g Generate a question paper for 3 hour exam duration..."
-                  className="w-full rounded-2xl border-dashed-8 bg-white/25 p-4 text-sm text-primary placeholder:text-[#30303099] focus:outline-none"
+                  className="w-full rounded-2xl border-dashed-8 bg-white/25 p-4 pr-10 text-sm text-primary placeholder:text-[#30303099] focus:outline-none"
                 />
+                <button
+                  type="button"
+                  onClick={handleMicClick}
+                  className={`absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-full transition ${
+                    isListening ? "bg-primary/10" : "bg-transparent"
+                  }`}
+                  aria-label={
+                    isListening
+                      ? "Stop voice input for additional information"
+                      : "Start voice input for additional information"
+                  }
+                >
+                  <Image
+                    src="/icons/Mic.svg"
+                    alt=""
+                    aria-hidden="true"
+                    width={11}
+                    height={14}
+                  />
+                </button>
               </div>
             </div>
 
@@ -1074,7 +1209,18 @@ export function AssignmentDetailsForm() {
                     placeholder="e.g Generate a question paper for 3 hour exam duration..."
                     className="w-full rounded-2xl border-dashed-8 bg-white/25 p-4 pr-10 text-sm text-primary placeholder:text-[#30303099] focus:outline-none"
                   />
-                  <span className="pointer-events-none absolute right-3 bottom-3">
+                  <button
+                    type="button"
+                    onClick={handleMicClick}
+                    className={`absolute bottom-3 right-3 flex h-7 w-7 items-center justify-center rounded-full transition ${
+                      isListening ? "bg-primary/10" : "bg-transparent"
+                    }`}
+                    aria-label={
+                      isListening
+                        ? "Stop voice input for additional information"
+                        : "Start voice input for additional information"
+                    }
+                  >
                     <Image
                       src="/icons/Mic.svg"
                       alt=""
@@ -1082,7 +1228,7 @@ export function AssignmentDetailsForm() {
                       width={11}
                       height={14}
                     />
-                  </span>
+                  </button>
                 </div>
               </div>
 
