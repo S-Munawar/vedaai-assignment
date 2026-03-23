@@ -1,0 +1,44 @@
+name: CD API Render
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - apps/api/**
+      - packages/shared/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - turbo.json
+      - package.json
+      - .github/workflows/cd-api-render.yml
+  workflow_dispatch:
+
+concurrency:
+  group: cd-api-render-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy-api:
+    name: Deploy API to Render
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - name: Validate deploy hook secret
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Missing required secret: RENDER_API_DEPLOY_HOOK_URL"
+            exit 1
+          fi
+
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_API_DEPLOY_HOOK_URL }}
+        run: |
+          curl --fail --show-error --silent --request POST "$RENDER_DEPLOY_HOOK_URL"
+          echo "Render deploy triggered successfully."
