@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSchools } from "@/hooks/useSchools";
 import { useToast } from "@/components/ToastProvider";
 
@@ -13,7 +13,7 @@ export default function AdminSchoolDetailsPage() {
   const [adminKey, setAdminKey] = useState("");
   const toast = useToast();
 
-  async function loadSchool(showSuccessToast = false) {
+  const loadSchool = useCallback(async (showSuccessToast = false) => {
     if (!schoolId) {
       toast.error("Missing school id.");
       return;
@@ -34,11 +34,11 @@ export default function AdminSchoolDetailsPage() {
     }
 
     toast.error("Failed to load school details.");
-  }
+  }, [adminKey, loadSchoolDetails, schoolDetailsError, schoolId, toast]);
 
   useEffect(() => {
     void loadSchool();
-  }, [schoolId]);
+  }, [loadSchool]);
 
   return (
     <section className="min-h-screen bg-[#f5f5f5] px-4 py-8 sm:px-8">

@@ -191,7 +191,7 @@ export default function TopNav() {
     <header className="sticky top-0 z-40 rounded-2xl bg-white px-6 sm:bg-white/75">
       <div className="flex h-16 items-center justify-between gap-2.5">
         <div className="flex items-center gap-3 md:hidden">
-          <img src="/VedeMobile.svg" alt="VedaAI Logo" className="rounded-xl w-10 h-10" />
+          <Image src="/VedeMobile.svg" alt="VedaAI Logo" className="rounded-xl w-10 h-10" width={40} height={40} />
           <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
         </div>
 
@@ -227,10 +227,13 @@ export default function TopNav() {
           <details className="group relative">
             <summary className="flex cursor-pointer list-none items-center gap rounded-xl bg-white px-2 py-1 md:gap-2 md:px-3 md:py-1.5 md:shadow-[-12px_24px_32px_-8px_rgba(240,240,240,2)]">
               {authUser?.profileImage ? (
-                <img
+                <Image
                   src={authUser.profileImage}
                   alt={authUser?.username ? `${authUser.username} profile` : 'Profile'}
                   className="h-8 w-8 rounded-full object-cover"
+                  width={32}
+                  height={32}
+                  unoptimized
                 />
               ) : (
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gray-900 text-xs font-bold text-white">

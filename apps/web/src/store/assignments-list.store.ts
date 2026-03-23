@@ -15,7 +15,7 @@ export const useAssignmentsListStore = create<
   AssignmentsListStore,
   [['zustand/devtools', never]]
 >(
-  devtools((set, get) => ({
+  devtools((set) => ({
   assignments: [],
   isLoading: false,
   errorMessage: '',

@@ -89,7 +89,7 @@ export default function Sidebar() {
        <aside className="sticky top-0 hidden h-screen overflow-visible rounded-xl bg-background py-3 pl-3 md:block">
         <div className="flex h-full flex-col gap-14 overflow-y-auto rounded-lg bg-white p-6 shadow-[16px_16px_36px_rgba(0,0,0,0.2)] no-scrollbar">
           <div className="flex items-center gap-2">
-            <img src="/vedaAI.png" alt="VedaAI Logo" className="h-10 w-10 rounded-xl" />
+            <Image src="/vedaAI.png" alt="VedaAI Logo" className="h-10 w-10 rounded-xl" width={40} height={40} />
             <h1 className="m-0 text-xl font-bold text-gray-800">VedaAI</h1>
           </div>
 
@@ -136,10 +136,13 @@ export default function Sidebar() {
               Settings
             </div>
             <div className="flex gap-4 rounded-xl bg-off-white-primary p-4">
-              <img
+              <Image
                 src={authUser?.profileImage || '/profile-images/1.png'}
                 alt={authUser?.username ? `${authUser.username} profile` : 'School profile'}
                 className="h-15 w-15 rounded-full object-cover"
+                width={60}
+                height={60}
+                unoptimized
               />
               <div className="flex flex-col justify-center">
                 <p className="text-md font-bold text-primary">{schoolName}</p>

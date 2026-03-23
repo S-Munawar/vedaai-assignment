@@ -1,12 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   assignmentCreatedRealtimeEventSchema,
-  deleteAssignmentResponseSchema,
   assignmentDeletedRealtimeEventSchema,
   assignmentDetailsResponseSchema,
   assignmentIntakeErrorResponseSchema,
@@ -14,7 +12,6 @@ import {
 } from "@repo/shared/assignment";
 import { getApiUrl } from "@/lib/api-base";
 import { getRealtimeSocket } from "@/lib/realtime";
-import { PageHeader } from "@/components/PageHeader";
 
 export default function AssignmentDetailsPage() {
   const params = useParams<{ assignmentId: string }>();
@@ -24,8 +21,6 @@ export default function AssignmentDetailsPage() {
   const [assignment, setAssignment] = useState<AssignmentDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [realtimeStatus, setRealtimeStatus] = useState<"connecting" | "connected" | "reconnecting" | "disconnected">("connecting");
   const articleRef = useRef<HTMLElement | null>(null);
 
   const loadAssignment = useCallback(async () => {
@@ -70,49 +65,6 @@ export default function AssignmentDetailsPage() {
   useEffect(() => {
     void loadAssignment();
   }, [loadAssignment]);
-
-  const handleDeleteAssignment = async () => {
-    if (!confirm("Are you sure you want to delete this assignment? This action cannot be undone.")) {
-      return;
-    }
-
-    if (!assignmentId) {
-      setErrorMessage("Missing assignment id");
-      return;
-    }
-
-    setIsDeleting(true);
-
-    try {
-      const response = await fetch(getApiUrl(`/assignments/${assignmentId}`), {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        const rawError = await response.json().catch(() => null);
-        const errorParsed = assignmentIntakeErrorResponseSchema.safeParse(rawError);
-        const errorMsg = errorParsed.success ? errorParsed.data.error : "Failed to delete assignment";
-        setErrorMessage(errorMsg);
-        setIsDeleting(false);
-        return;
-      }
-
-      const rawSuccess = await response.json().catch(() => null);
-      const parsedSuccess = deleteAssignmentResponseSchema.safeParse(rawSuccess);
-
-      if (!parsedSuccess.success) {
-        setErrorMessage("Unexpected response while deleting assignment");
-        setIsDeleting(false);
-        return;
-      }
-
-      // The router will be handled by the real-time event
-    } catch {
-      setErrorMessage("Could not reach backend endpoint.");
-      setIsDeleting(false);
-    }
-  };
 
   const handleDownloadAsPdf = () => {
     if (typeof window === "undefined") {
@@ -211,15 +163,9 @@ export default function AssignmentDetailsPage() {
     const socket = getRealtimeSocket();
 
     if (!socket) {
-      setRealtimeStatus("disconnected");
       return;
     }
 
-    setRealtimeStatus(socket.connected ? "connected" : "connecting");
-
-    const onConnect = () => setRealtimeStatus("connected");
-    const onDisconnect = () => setRealtimeStatus("disconnected");
-    const onReconnectAttempt = () => setRealtimeStatus("reconnecting");
 
     const onAssignmentCreated = (payload: unknown) => {
       const parsed = assignmentCreatedRealtimeEventSchema.safeParse(payload);
@@ -248,16 +194,10 @@ export default function AssignmentDetailsPage() {
       }
     };
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.io.on("reconnect_attempt", onReconnectAttempt);
     socket.on("assignment:created", onAssignmentCreated);
     socket.on("assignment:deleted", onAssignmentDeleted);
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.io.off("reconnect_attempt", onReconnectAttempt);
       socket.off("assignment:created", onAssignmentCreated);
       socket.off("assignment:deleted", onAssignmentDeleted);
     };
@@ -408,8 +348,6 @@ export default function AssignmentDetailsPage() {
     };
   }
 
-  const showHeader = isLoading || Boolean(errorMessage) || Boolean(assignment);
-
   return (
     <section className="flex min-h-screen flex-col">
       <div className="mx-auto flex w-full flex-1 flex-col gap-3 rounded-xl">
@@ -442,7 +380,7 @@ export default function AssignmentDetailsPage() {
                 <button
                   type="button"
                   onClick={handleDownloadAsPdf}
-                  className="inline-flexitems-center justify-center rounded-full bg-transparent text-primary transition hover:opacity-90 md:hidden"
+                  className="inline-flex items-center justify-center rounded-full bg-transparent text-primary transition hover:opacity-90 md:hidden"
                 >
                   <Image src="/mobile-icons/Download.svg" alt="Download" width={32} height={32} />
                 </button>
