@@ -5,7 +5,8 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "pnpm --filter shared run build && tsup",
+    "prebuild": "pnpm --filter @repo/shared run build",
+    "build": "tsup",
     "start": "node dist/server.js"
   },
   "engines": {
