@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { mongoIdSchema } from './assignment.js';
+import { mongoIdSchema } from './assignment';
 
 export const notificationTypeSchema = z.enum(['assignment:created', 'assignment:deleted']);
 
