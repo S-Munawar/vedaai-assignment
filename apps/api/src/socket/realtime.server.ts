@@ -12,10 +12,26 @@ function getTokenFromSocketRequest(request: IncomingMessage) {
   return parseCookie(request.headers.cookie);
 }
 
+function getAllowedOrigins() {
+  return env.webOrigin
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 export function initializeRealtimeServer(httpServer: HttpServer) {
   const io = new Server(httpServer, {
     cors: {
-      origin: env.webOrigin,
+      origin: (origin, callback) => {
+        const allowedOrigins = getAllowedOrigins();
+
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error('Origin not allowed by Socket CORS'));
+      },
       credentials: true,
     },
   });

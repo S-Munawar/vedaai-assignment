@@ -16,7 +16,7 @@ export function getRealtimeSocket(): Socket | null {
 
   socketInstance = io(getWsBaseUrl(), {
     withCredentials: true,
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
   });
 
   return socketInstance;

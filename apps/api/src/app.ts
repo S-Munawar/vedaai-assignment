@@ -9,9 +9,25 @@ import schoolsRouter from '@/routes/schools.routes';
 
 const app = express();
 
+function getAllowedOrigins() {
+  return env.webOrigin
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
 app.use(
   cors({
-    origin: env.webOrigin,
+    origin: (origin, callback) => {
+      const allowedOrigins = getAllowedOrigins();
+
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error('Origin not allowed by CORS'));
+    },
     credentials: true,
   }),
 );
