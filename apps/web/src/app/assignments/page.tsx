@@ -163,10 +163,10 @@ export default function Assignments() {
 
   return (
     <section
-      className="flex min-h-screen flex-col"
+      className="flex min-h-screen flex-col gap-3"
       onClick={() => setOpenMenuAssignmentId(null)}
     >
-      <div className="mx-auto flex w-full max-w-384 flex-1 flex-col gap-3 rounded-xl">
+      <div className="mx-auto w-full rounded-xl">
         <PageHeader
           title="Assignments"
           subtitle="Manage and create assignments for your classes."
@@ -174,7 +174,8 @@ export default function Assignments() {
           realtimeStatus={realtimeStatus}
           showHeader={showHeader}
         />
-
+      </div>
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-3 rounded-xl">
         {isLoading ? <p className="text-sm text-gray-500">Loading assignments...</p> : null}
         {!isLoading && hasError ? <p className="text-sm text-red-600">{errorMessage}</p> : null}
 
