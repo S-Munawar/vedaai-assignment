@@ -874,6 +874,7 @@ function formatGeneratedBody(input: AssignmentIntakeRequest, draft: AssignmentGe
 
 function buildFallbackGeneratedContent(input: AssignmentIntakeRequest): AssignmentGeneratedContent {
   const lines: string[] = [];
+  const fallbackAnswers: Array<{ questionId: number; answer: string }> = [];
 
   const title = `${input.chapterName} - Generated Assignment`;
   // Create sections for each question type
@@ -889,20 +890,29 @@ function buildFallbackGeneratedContent(input: AssignmentIntakeRequest): Assignme
       lines.push(`Q${questionCounter}. (${row.marks} marks)`);
       lines.push(`Write your answer for ${row.type.toLowerCase()} question ${i + 1}.`);
       lines.push('');
+
+      fallbackAnswers.push({
+        questionId: questionCounter,
+        answer: `${row.type} answer for ${input.chapterName} (Class ${input.classLevel}). Include key concept and one supporting point.`,
+      });
+
       questionCounter++;
     }
 
     sectionLetter++;
   }
 
-  // Answer key section (placeholder)
+  // Answer key section
   lines.push('');
   lines.push('='.repeat(60));
   lines.push('ANSWER KEY');
   lines.push('='.repeat(60));
   lines.push('');
-  lines.push('Answer key generation requires LLM configuration. Answers will be provided here.');
-  lines.push('');
+
+  for (const row of fallbackAnswers) {
+    lines.push(`Q${row.questionId}: ${row.answer}`);
+    lines.push('');
+  }
 
   const body = lines.join('\n').trim();
 
