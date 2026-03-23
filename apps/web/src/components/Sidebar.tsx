@@ -5,9 +5,13 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { authMeResponseSchema, type AuthTokenPayload } from '@repo/shared/auth';
-import { schoolDetailsResponseSchema } from '@repo/shared/schools';
+import { listSchoolsResponseSchema, schoolDetailsResponseSchema } from '@repo/shared/schools';
 import { isAuthPage, SIDEBAR_NAV_ITEMS } from '@/constants/navigation.constants';
 import { getApiUrl } from '@/lib/api-base';
+
+function normalizeSchoolName(name: string): string {
+  return name.trim().toLowerCase().replace(/\s+/g, ' ');
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -61,8 +65,44 @@ export default function Sidebar() {
           return;
         }
 
-        setSchoolName(parsedSchool.data.school.name || parsed.data.user.schoolName || 'School not available');
-        setSchoolCity(parsedSchool.data.school.location.city || 'City not available');
+        const resolvedSchoolName = parsedSchool.data.school.name || parsed.data.user.schoolName || 'School not available';
+        const directCity = parsedSchool.data.school.location.city?.trim() || '';
+
+        setSchoolName(resolvedSchoolName);
+
+        if (directCity) {
+          setSchoolCity(directCity);
+          return;
+        }
+
+        const listResponse = await fetch(getApiUrl('/schools'), {
+          method: 'GET',
+          credentials: 'include',
+        });
+
+        if (!listResponse.ok) {
+          setSchoolCity('City not available');
+          return;
+        }
+
+        const rawList = await listResponse.json().catch(() => null);
+        const parsedList = listSchoolsResponseSchema.safeParse(rawList);
+
+        if (!parsedList.success) {
+          setSchoolCity('City not available');
+          return;
+        }
+
+        const schools = parsedList.data.schools;
+
+        const targetNormalizedName = normalizeSchoolName(resolvedSchoolName);
+        const matchedSchool = schools.find((school) => {
+          const schoolNameValue = typeof school?.name === 'string' ? school.name : '';
+          return normalizeSchoolName(schoolNameValue) === targetNormalizedName;
+        });
+
+        const matchedCity = matchedSchool?.location?.city?.trim() || '';
+        setSchoolCity(matchedCity || 'City not available');
       } catch {
         setAuthUser(null);
         setSchoolName('School not available');
