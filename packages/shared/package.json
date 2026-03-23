@@ -7,22 +7,23 @@
   "exports": {
     "./auth": {
       "types": "./src/auth.ts",
-      "default": "./src/auth.ts"
+      "default": "./dist/auth.js"
     },
     "./assignment": {
       "types": "./src/assignment.ts",
-      "default": "./src/assignment.ts"
+      "default": "./dist/assignment.js"
     },
     "./notification": {
       "types": "./src/notification.ts",
-      "default": "./src/notification.ts"
+      "default": "./dist/notification.js"
     },
     "./schools": {
       "types": "./src/schools.ts",
-      "default": "./src/schools.ts"
+      "default": "./dist/schools.js"
     }
   },
   "scripts": {
+    "build": "tsup",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@repo/typescript-config": "workspace:*",
+    "tsup": "^8.5.1",
     "typescript": "5.9.2"
   }
 }
