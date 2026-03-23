@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   schoolBoardOptions,
   schoolMediumOptions,
@@ -9,6 +9,7 @@ import {
 } from "@repo/shared/schools";
 import { useSchools } from "@/hooks/useSchools";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/components/ToastProvider";
 
 const DEMO_ADMIN_API_KEY = "c90dddb6-9c9f-43c3-815c-8a3e146b5381";
 
@@ -40,6 +41,7 @@ export default function AdminSchoolSearchPage() {
   const [boardFilter, setBoardFilter] = useState<string>("all");
   const [mediumFilter, setMediumFilter] = useState<string>("all");
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const toast = useToast();
 
   const filteredSchools = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -72,6 +74,14 @@ export default function AdminSchoolSearchPage() {
   async function handleLoadSchools() {
     await loadSchoolsAction({ adminKey });
   }
+
+  useEffect(() => {
+    if (!schoolError) {
+      return;
+    }
+
+    toast.error(schoolError);
+  }, [schoolError, toast]);
 
   return (
     <section className="flex min-h-screen flex-col">
@@ -175,7 +185,6 @@ export default function AdminSchoolSearchPage() {
             </select>
           </div>
 
-          {schoolError ? <p className="mt-3 text-sm text-red-600">❌ {schoolError}</p> : null}
         </div>
 
         <div className="space-y-3">

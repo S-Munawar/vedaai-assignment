@@ -14,6 +14,7 @@ import { getApiUrl } from "@/lib/api-base";
 import { useSchools } from "@/hooks/useSchools";
 import type { AdminSchoolForm } from "@/types/admin-school.types";
 import { PageHeader } from "@/components/PageHeader";
+import { useToast } from "@/components/ToastProvider";
 
 const INITIAL_FORM: AdminSchoolForm = {
   name: "",
@@ -43,7 +44,7 @@ export default function AdminSchoolsPage() {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [adminKey, setAdminKey] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
   function updateField<K extends keyof AdminSchoolForm>(key: K, value: AdminSchoolForm[K]) {
     setFormData((prev) => ({ ...prev, [key]: value }));
@@ -68,7 +69,6 @@ export default function AdminSchoolsPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage("");
     setIsSubmitting(true);
 
     try {
@@ -82,7 +82,7 @@ export default function AdminSchoolsPage() {
       const parsedPayload = createSchoolRequestSchema.safeParse(payloadCandidate);
 
       if (!parsedPayload.success) {
-        setMessage(`❌ ${parsedPayload.error.issues[0]?.message || "Invalid school details"}`);
+        toast.error(parsedPayload.error.issues[0]?.message || "Invalid school details.");
         return;
       }
 
@@ -98,7 +98,7 @@ export default function AdminSchoolsPage() {
       if (!response.ok) {
         const rawError = await response.json().catch(() => null);
         const parsedError = schoolsErrorResponseSchema.safeParse(rawError);
-        setMessage(parsedError.success ? `❌ ${parsedError.data.error}` : "❌ Failed to create school");
+        toast.error(parsedError.success ? parsedError.data.error : "Failed to create school.");
         return;
       }
 
@@ -106,19 +106,27 @@ export default function AdminSchoolsPage() {
       const parsed = createSchoolResponseSchema.safeParse(raw);
 
       if (!parsed.success) {
-        setMessage("❌ Unexpected response while creating school.");
+        toast.error("Unexpected response while creating school.");
         return;
       }
 
-      setMessage(`✅ School created: ${parsed.data.school.name}`);
+      toast.success(`School created: ${parsed.data.school.name}`);
       setFormData(INITIAL_FORM);
       await loadSchools({ adminKey });
     } catch {
-      setMessage("❌ Could not reach backend endpoint.");
+      toast.error("Could not reach backend endpoint.");
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  useEffect(() => {
+    if (!schoolError) {
+      return;
+    }
+
+    toast.error(schoolError);
+  }, [schoolError, toast]);
 
   return (
     <section className="flex min-h-screen flex-col">
@@ -351,11 +359,6 @@ export default function AdminSchoolsPage() {
               required
             />
           </div>
-
-          {message ? (
-            <p className={`text-sm ${message.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>
-          ) : null}
-          {schoolError && !message ? <p className="text-sm text-red-600">❌ {schoolError}</p> : null}
 
           <div className="pt-1">
             <button

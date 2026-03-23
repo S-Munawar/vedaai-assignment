@@ -4,35 +4,36 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useSchools } from "@/hooks/useSchools";
+import { useToast } from "@/components/ToastProvider";
 
 export default function AdminSchoolDetailsPage() {
   const params = useParams<{ schoolId: string }>();
   const schoolId = params.schoolId;
   const { selectedSchool: school, isLoadingSchoolDetails, schoolDetailsError, loadSchoolDetails } = useSchools();
   const [adminKey, setAdminKey] = useState("");
-  const [message, setMessage] = useState("");
+  const toast = useToast();
 
-  async function loadSchool() {
+  async function loadSchool(showSuccessToast = false) {
     if (!schoolId) {
-      setMessage("❌ Missing school id");
+      toast.error("Missing school id.");
       return;
     }
-
-    setMessage("");
 
     const loadedSchool = await loadSchoolDetails(schoolId, { adminKey });
 
     if (loadedSchool) {
-      setMessage("✅ School details loaded");
+      if (showSuccessToast) {
+        toast.success("School details loaded.");
+      }
       return;
     }
 
     if (schoolDetailsError) {
-      setMessage(`❌ ${schoolDetailsError}`);
+      toast.error(schoolDetailsError);
       return;
     }
 
-    setMessage("❌ Failed to load school details");
+    toast.error("Failed to load school details.");
   }
 
   useEffect(() => {
@@ -66,17 +67,13 @@ export default function AdminSchoolDetailsPage() {
             </div>
             <button
               type="button"
-              onClick={() => void loadSchool()}
+              onClick={() => void loadSchool(true)}
               disabled={isLoadingSchoolDetails}
               className="mt-6 h-10 rounded-lg bg-gray-900 px-4 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-500"
             >
               {isLoadingSchoolDetails ? "Loading..." : "Reload"}
             </button>
           </div>
-
-          {message ? (
-            <p className={`mt-3 text-sm ${message.startsWith("✅") ? "text-green-600" : "text-red-600"}`}>{message}</p>
-          ) : null}
         </div>
 
         {school ? (

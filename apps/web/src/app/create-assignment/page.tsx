@@ -18,6 +18,7 @@ import {
   SUBJECT_OPTIONS,
   getChapterSuggestions,
 } from "@/constants/assignment-form.constants";
+import { useToast } from "@/components/ToastProvider";
 import { useAssignmentStore } from "@/store/assignment.store";
 import { PageHeader } from "@/components/PageHeader";
 
@@ -154,7 +155,6 @@ export function AssignmentDetailsForm() {
     dueDate,
     selectedFile,
     isSubmitting,
-    submitMessage,
     updateRow,
     removeRow,
     addQuestionType,
@@ -165,7 +165,6 @@ export function AssignmentDetailsForm() {
     setDueDate,
     setSelectedFile,
     setIsSubmitting,
-    setSubmitMessage,
   } = useAssignmentStore();
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -176,6 +175,7 @@ export function AssignmentDetailsForm() {
   const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const realtimeStatus = useRealtimeStatus();
+  const toast = useToast();
 
   const chapterSuggestions = useMemo(
     () => getChapterSuggestions(subject),
@@ -228,14 +228,13 @@ export function AssignmentDetailsForm() {
       window.SpeechRecognition ?? window.webkitSpeechRecognition;
 
     if (!SpeechRecognitionConstructor) {
-      setSubmitMessage("❌ Voice input is not supported on this browser.");
+      toast.error("Voice input is not supported on this browser.");
       return;
     }
 
     if (isListening) {
       speechRecognitionRef.current?.stop();
       setIsListening(false);
-      setSubmitMessage("");
       return;
     }
 
@@ -270,7 +269,7 @@ export function AssignmentDetailsForm() {
       };
 
       recognition.onerror = () => {
-        setSubmitMessage("❌ Could not capture voice input. Please try again.");
+        toast.error("Could not capture voice input. Please try again.");
         setIsListening(false);
       };
 
@@ -284,24 +283,23 @@ export function AssignmentDetailsForm() {
     try {
       speechRecognitionRef.current.start();
       setIsListening(true);
-      setSubmitMessage("🎙️ Listening... Tap the mic again to stop.");
+      toast.info("Listening. Tap the mic again to stop.");
     } catch {
       setIsListening(false);
-      setSubmitMessage("❌ Could not start voice input.");
+      toast.error("Could not start voice input.");
     }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSubmitMessage("");
 
     if (!classLevel) {
-      setSubmitMessage("❌ Please select class");
+      toast.error("Please select class.");
       return;
     }
 
     if (!subject.trim()) {
-      setSubmitMessage("❌ Subject is required");
+      toast.error("Subject is required.");
       return;
     }
 
@@ -316,9 +314,7 @@ export function AssignmentDetailsForm() {
     );
 
     if (!fileMetaParsed.success) {
-      setSubmitMessage(
-        `❌ ${fileMetaParsed.error.issues[0]?.message || "Invalid file"}`,
-      );
+      toast.error(fileMetaParsed.error.issues[0]?.message || "Invalid file.");
       return;
     }
 
@@ -340,8 +336,8 @@ export function AssignmentDetailsForm() {
       assignmentIntakeRequestSchema.safeParse(payloadCandidate);
 
     if (!payloadParsed.success) {
-      setSubmitMessage(
-        `❌ ${payloadParsed.error.issues[0]?.message || "Invalid assignment details"}`,
+      toast.error(
+        payloadParsed.error.issues[0]?.message || "Invalid assignment details.",
       );
       return;
     }
@@ -363,10 +359,10 @@ export function AssignmentDetailsForm() {
         const errorPayload =
           assignmentIntakeErrorResponseSchema.safeParse(rawErrorPayload);
 
-        setSubmitMessage(
+        toast.error(
           errorPayload.success
-            ? `❌ ${errorPayload.data.error}`
-            : "❌ Endpoint reached. Backend logic is not implemented yet.",
+            ? errorPayload.data.error
+            : "Endpoint reached, but backend logic is not implemented yet.",
         );
         return;
       }
@@ -376,14 +372,14 @@ export function AssignmentDetailsForm() {
         assignmentIntakeSuccessResponseSchema.safeParse(rawSuccessPayload);
 
       if (!successPayload.success) {
-        setSubmitMessage("❌ Backend returned an unexpected response.");
+        toast.error("Backend returned an unexpected response.");
         return;
       }
 
-      setSubmitMessage("✅ Form inputs sent to backend intake endpoint.");
+      toast.success("Assignment details submitted successfully.");
       router.push(`/assignments/${successPayload.data.assignmentId}`);
     } catch {
-      setSubmitMessage("❌ Could not reach backend endpoint.");
+      toast.error("Could not reach backend endpoint.");
     } finally {
       setIsSubmitting(false);
     }
@@ -827,18 +823,6 @@ export function AssignmentDetailsForm() {
               </div>
             </div>
 
-            {/* Submit message */}
-            {submitMessage && (
-              <p
-                className={`text-sm ${
-                  submitMessage.includes("❌")
-                    ? "text-red-600"
-                    : "text-green-600"
-                }`}
-              >
-                {submitMessage}
-              </p>
-            )}
           </form>
         </div>
 
@@ -1232,17 +1216,6 @@ export function AssignmentDetailsForm() {
                 </div>
               </div>
 
-              {submitMessage && (
-                <p
-                  className={`text-sm ${
-                    submitMessage.includes("❌")
-                      ? "text-red-600"
-                      : "text-green-600"
-                  }`}
-                >
-                  {submitMessage}
-                </p>
-              )}
             </form>
           </div>
           <div className="flex items-center justify-between gap-3">

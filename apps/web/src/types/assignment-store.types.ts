@@ -11,7 +11,6 @@ export interface AssignmentStore {
   dueDate: string;
   selectedFile: File | null;
   isSubmitting: boolean;
-  submitMessage: string;
   updateRow: (id: number, updates: Partial<QuestionRow>) => void;
   removeRow: (id: number) => void;
   addQuestionType: () => void;
@@ -22,6 +21,5 @@ export interface AssignmentStore {
   setDueDate: (date: string) => void;
   setSelectedFile: (file: File | null) => void;
   setIsSubmitting: (submitting: boolean) => void;
-  setSubmitMessage: (message: string) => void;
   resetForm: () => void;
 }

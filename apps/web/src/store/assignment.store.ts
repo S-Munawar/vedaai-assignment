@@ -27,7 +27,6 @@ export const useAssignmentStore = create<
   dueDate: getDefaultDate(),
   selectedFile: null,
   isSubmitting: false,
-  submitMessage: "",
 
   updateRow: (id: number, updates: Partial<QuestionRow>) => {
     set((state) => ({
@@ -71,7 +70,6 @@ export const useAssignmentStore = create<
   setDueDate: (date: string) => set({ dueDate: date }),
   setSelectedFile: (file: File | null) => set({ selectedFile: file }),
   setIsSubmitting: (submitting: boolean) => set({ isSubmitting: submitting }),
-  setSubmitMessage: (message: string) => set({ submitMessage: message }),
 
   resetForm: () => {
     set({
@@ -83,7 +81,6 @@ export const useAssignmentStore = create<
       dueDate: getDefaultDate(),
       selectedFile: null,
       isSubmitting: false,
-      submitMessage: "",
     });
   },
   }), { name: 'AssignmentStore' }),
