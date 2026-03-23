@@ -1043,6 +1043,16 @@ export async function generateAssignmentFromLlm(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    const shouldUseFallback =
+      /timed out|could not reach|request failed with status 5\d\d|truncated by token|non-json|retry request failed/i.test(
+        errorMessage,
+      );
+
+    if (shouldUseFallback) {
+      console.warn(`⚠️ LLM generation degraded, using fallback template: ${errorMessage}`);
+      return buildFallbackGeneratedContent(input);
+    }
+
     throw new Error(`LLM generation failed: ${errorMessage}`);
   }
 }
