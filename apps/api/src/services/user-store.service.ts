@@ -22,7 +22,35 @@ async function findSchoolByName(schoolName: SchoolName) {
 
 async function findActiveSchoolByName(schoolName: SchoolName) {
   const normalizedName = normalizeSchoolName(schoolName);
-  return SchoolModel.findOne({ normalizedName, isActive: { $ne: false } });
+  const byNormalizedName = await SchoolModel.findOne({ normalizedName, isActive: { $ne: false } });
+
+  if (byNormalizedName) {
+    return byNormalizedName;
+  }
+
+  const trimmedName = schoolName.trim();
+  const escapedName = trimmedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const byExactName = await SchoolModel.findOne({
+    name: { $regex: `^${escapedName}$`, $options: 'i' },
+    isActive: { $ne: false },
+  });
+
+  if (!byExactName) {
+    return null;
+  }
+
+  // Self-heal bad manual inserts where normalizedName does not match name.
+  if (byExactName.normalizedName !== normalizedName) {
+    byExactName.normalizedName = normalizedName;
+
+    try {
+      await byExactName.save();
+    } catch {
+      // Ignore duplicate key race; caller can still use the resolved school.
+    }
+  }
+
+  return byExactName;
 }
 
 async function findOrCreateSchoolByName(schoolName: SchoolName) {
