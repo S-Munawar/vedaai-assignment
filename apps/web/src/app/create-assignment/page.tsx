@@ -169,7 +169,8 @@ export function AssignmentDetailsForm() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const dateInputRef = useRef<HTMLInputElement | null>(null);
-  const classDropdownRef = useRef<HTMLDivElement | null>(null);
+  const mobileClassDropdownRef = useRef<HTMLDivElement | null>(null);
+  const desktopClassDropdownRef = useRef<HTMLDivElement | null>(null);
   const speechRecognitionRef = useRef<BrowserSpeechRecognition | null>(null);
   const additionalInfoRef = useRef(additionalInfo);
   const [isClassDropdownOpen, setIsClassDropdownOpen] = useState(false);
@@ -202,11 +203,11 @@ export function AssignmentDetailsForm() {
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
-      if (!classDropdownRef.current) {
-        return;
-      }
+      const target = event.target as Node;
+      const isInsideMobile = mobileClassDropdownRef.current?.contains(target) ?? false;
+      const isInsideDesktop = desktopClassDropdownRef.current?.contains(target) ?? false;
 
-      if (!classDropdownRef.current.contains(event.target as Node)) {
+      if (!isInsideMobile && !isInsideDesktop) {
         setIsClassDropdownOpen(false);
       }
     };
@@ -492,7 +493,7 @@ export function AssignmentDetailsForm() {
             {/* Class */}
             <div className="flex flex-col gap-2">
               <p className="text-sm font-bold text-primary">Class</p>
-              <div className="relative" ref={classDropdownRef}>
+              <div className="relative" ref={mobileClassDropdownRef}>
                 <button
                   type="button"
                   onClick={() => setIsClassDropdownOpen((value) => !value)}
@@ -942,7 +943,7 @@ export function AssignmentDetailsForm() {
                     Date
                   </p>
 
-                  <div className="relative" ref={classDropdownRef}>
+                  <div className="relative" ref={desktopClassDropdownRef}>
                     <button
                       type="button"
                       onClick={() =>
