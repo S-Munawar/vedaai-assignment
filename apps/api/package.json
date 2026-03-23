@@ -5,7 +5,7 @@
   "main": "src/server.ts",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc && tsc-alias --resolve-full-paths --resolve-full-extension .js",
+    "build": "tsup",
     "start": "node dist/server.js"
   },
   "engines": {
@@ -31,7 +31,6 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/node": "^22.15.3",
-    "tsc-alias": "^1.8.16",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"

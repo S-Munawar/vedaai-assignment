@@ -9,13 +9,12 @@
       "@/*": ["./src/*"]
     },
     "strict": true,
-    "noEmit": false,
+    "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "types": ["node"],
-    "rootDir": "./src",
-    "outDir": "./dist"
+    "rootDir": "./src"
   },
   "include": ["src"],
   "exclude": ["node_modules", "dist"]
