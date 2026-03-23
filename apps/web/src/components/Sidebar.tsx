@@ -139,7 +139,7 @@ export default function Sidebar() {
             }}
             className="inline-block w-full rounded-full bg-linear-to-b from-[#f77950] to-[#c0350a] shadow-lg"
           >
-            <div className="m-1 flex items-center justify-between gap-2.5 rounded-full bg-[#272727] px-11 py-2 text-lg font-medium text-white">
+            <div className="m-1 flex items-center justify-center gap-2.5 rounded-full bg-[#272727] px-11 py-2 text-lg font-medium text-white">
               <Image src="/icons/Sparkles.svg" alt="" aria-hidden="true" width={20} height={20} />
               Create Assignment
             </div>
