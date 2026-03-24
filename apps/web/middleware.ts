@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const AUTH_COOKIE_NAME = 'vedaai_auth_token';
+const SESSION_HINT_COOKIE_NAME = 'vedaai_session_hint';
 const AUTH_PAGE_PREFIXES = ['/login', '/register', '/complete-registration'] as const;
 
 function isAuthPage(pathname: string) {
@@ -19,7 +20,9 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const hasValidAuth = Boolean(request.cookies.get(AUTH_COOKIE_NAME)?.value);
+  const hasValidAuth = Boolean(
+    request.cookies.get(AUTH_COOKIE_NAME)?.value || request.cookies.get(SESSION_HINT_COOKIE_NAME)?.value,
+  );
   const authPage = isAuthPage(pathname);
 
   if (!hasValidAuth && !authPage) {

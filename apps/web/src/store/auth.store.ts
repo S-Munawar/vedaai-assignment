@@ -18,6 +18,25 @@ import { getFirebaseAuthClient, getGoogleProvider } from '@/lib/firebase';
 import type { AuthStore } from '@/types/auth-store.types';
 
 const DEFAULT_SCHOOL = '';
+const SESSION_HINT_COOKIE_NAME = 'vedaai_session_hint';
+
+function setSessionHintCookie() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_HINT_COOKIE_NAME}=1; Path=/; Max-Age=${60 * 60 * 24 * 7}; SameSite=Lax${secure}`;
+}
+
+function clearSessionHintCookie() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = `${SESSION_HINT_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+}
 
 export const useAuthStore = create<
   AuthStore,
@@ -123,6 +142,8 @@ export const useAuthStore = create<
         return false;
       }
 
+      setSessionHintCookie();
+
       return true;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Login failed' });
@@ -161,6 +182,8 @@ export const useAuthStore = create<
         set({ error: 'Unexpected registration response' });
         return false;
       }
+
+      setSessionHintCookie();
 
       return true;
     } catch (error) {
@@ -209,6 +232,7 @@ export const useAuthStore = create<
         }
 
         set({ pendingGoogleRegistration: null });
+        setSessionHintCookie();
         return 'authenticated';
       }
 
@@ -279,6 +303,7 @@ export const useAuthStore = create<
       }
 
       set({ pendingGoogleRegistration: null });
+      setSessionHintCookie();
       return true;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Could not complete registration' });
@@ -311,6 +336,8 @@ export const useAuthStore = create<
         return;
       }
     } finally {
+      clearSessionHintCookie();
+
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('pendingGoogleRegistration');
       }

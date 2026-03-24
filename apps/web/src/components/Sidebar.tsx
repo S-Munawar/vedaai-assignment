@@ -21,6 +21,10 @@ export default function Sidebar() {
   const [schoolCity, setSchoolCity] = useState('City not available');
 
   useEffect(() => {
+    if (isAuthPage(pathname)) {
+      return;
+    }
+
     async function loadAuthMe() {
       try {
         const response = await fetch(getApiUrl('/auth/me'), {
@@ -29,6 +33,10 @@ export default function Sidebar() {
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            router.replace('/login');
+          }
+
           setAuthUser(null);
           return;
         }
@@ -40,6 +48,7 @@ export default function Sidebar() {
           setAuthUser(null);
           setSchoolName('School not available');
           setSchoolCity('City not available');
+          router.replace('/login');
           return;
         }
 
@@ -111,7 +120,7 @@ export default function Sidebar() {
     }
 
     void loadAuthMe();
-  }, []);
+  }, [pathname, router]);
 
   if (isAuthPage(pathname)) {
     return null;

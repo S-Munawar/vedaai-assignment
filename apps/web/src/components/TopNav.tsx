@@ -77,6 +77,10 @@ export default function TopNav() {
         });
 
         if (!response.ok) {
+          if (response.status === 401) {
+            router.replace('/login');
+          }
+
           setAuthUser(null);
           return;
         }
@@ -86,6 +90,7 @@ export default function TopNav() {
 
         if (!parsed.success || !parsed.data.authenticated) {
           setAuthUser(null);
+          router.replace('/login');
           return;
         }
 
@@ -98,7 +103,7 @@ export default function TopNav() {
     if (!shouldHideNav) {
       void loadAuthMe();
     }
-  }, [shouldHideNav]);
+  }, [router, shouldHideNav]);
 
   useEffect(() => {
     const socket = getRealtimeSocket();
