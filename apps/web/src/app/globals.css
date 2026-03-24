@@ -173,5 +173,11 @@
   .imgLight {
     display: block;
   }
+  button {
+        cursor: pointer !important;
+    }
+    a {
+        cursor: pointer !important;
+    }
 }
 

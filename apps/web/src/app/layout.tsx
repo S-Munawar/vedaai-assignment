@@ -32,7 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${bricolageGrotesque.variable} ${geistSans.variable} ${geistMono.variable}`}>
+      <body className={`${bricolageGrotesque.className} ${bricolageGrotesque.variable} ${geistSans.variable} ${geistMono.variable}`}>
         <ToastProvider>
           <div className="flex h-screen bg-off-white/50 md:bg-background">
             <Sidebar />
