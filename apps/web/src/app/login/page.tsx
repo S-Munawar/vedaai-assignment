@@ -10,27 +10,13 @@ export default function LoginPage() {
   const router = useRouter();
   const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
 
-  function getPostLoginPath() {
-    if (typeof window === 'undefined') {
-      return '/';
-    }
-
-    const redirectPath = new URLSearchParams(window.location.search).get('redirect');
-
-    if (!redirectPath || !redirectPath.startsWith('/')) {
-      return '/';
-    }
-
-    return redirectPath;
-  }
-
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
     const success = await login();
 
     if (success) {
-      router.push(getPostLoginPath());
+      router.push('/');
       router.refresh();
     }
   }
@@ -40,7 +26,7 @@ export default function LoginPage() {
     const result = await startGoogleRegistration();
 
     if (result === 'authenticated') {
-      router.push(getPostLoginPath());
+      router.push('/');
       router.refresh();
       return;
     }

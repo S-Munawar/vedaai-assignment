@@ -23,10 +23,7 @@ export function middleware(request: NextRequest) {
   const authPage = isAuthPage(pathname);
 
   if (!hasAuthCookie && !authPage) {
-    const loginUrl = new URL('/login', request.url);
-    const destination = `${pathname}${request.nextUrl.search}`;
-    loginUrl.searchParams.set('redirect', destination);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
   if (hasAuthCookie && authPage) {
