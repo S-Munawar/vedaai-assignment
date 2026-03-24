@@ -2,17 +2,20 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
 
   function getPostLoginPath() {
-    const redirectPath = searchParams.get('redirect');
+    if (typeof window === 'undefined') {
+      return '/';
+    }
+
+    const redirectPath = new URLSearchParams(window.location.search).get('redirect');
 
     if (!redirectPath || !redirectPath.startsWith('/')) {
       return '/';
