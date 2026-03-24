@@ -2,13 +2,24 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { loginForm, error, isSubmitting, setLoginField, login, startGoogleRegistration, clearError } = useAuth();
+
+  function getPostLoginPath() {
+    const redirectPath = searchParams.get('redirect');
+
+    if (!redirectPath || !redirectPath.startsWith('/')) {
+      return '/';
+    }
+
+    return redirectPath;
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -16,7 +27,7 @@ export default function LoginPage() {
     const success = await login();
 
     if (success) {
-      router.push('/');
+      router.push(getPostLoginPath());
       router.refresh();
     }
   }
@@ -26,7 +37,7 @@ export default function LoginPage() {
     const result = await startGoogleRegistration();
 
     if (result === 'authenticated') {
-      router.push('/');
+      router.push(getPostLoginPath());
       router.refresh();
       return;
     }
