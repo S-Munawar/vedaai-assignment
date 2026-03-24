@@ -12,6 +12,7 @@ export const env = {
   firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL || '',
   firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY || '',
   authCookieName: 'vedaai_auth_token',
+  authCookieDomain: process.env.AUTH_COOKIE_DOMAIN || '',
   adminApiKey: process.env.ADMIN_API_KEY || 'dev-admin-key',
   llmApiKey: process.env.LLM_API_KEY || '',
   llmModel: process.env.LLM_MODEL || 'gpt-4o-mini',

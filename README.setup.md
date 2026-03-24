@@ -44,6 +44,7 @@ PORT=4000
 WEB_ORIGIN=http://localhost:3000
 JWT_SECRET=change-me
 MONGODB_URI=mongodb://localhost:27017/vedaai
+AUTH_COOKIE_DOMAIN=
 
 # Firebase Admin
 FIREBASE_PROJECT_ID=your-firebase-project-id
@@ -64,6 +65,7 @@ Notes:
 - `MONGODB_URI` is required or API startup fails.
 - `FIREBASE_PRIVATE_KEY` must preserve escaped newlines (`\n`) when stored in `.env`.
 - `LLM_API_KEY` is required for assignment generation.
+- Set `AUTH_COOKIE_DOMAIN` in production when API and web use different subdomains (example: `.example.com`).
 
 ### Frontend: `apps/web/.env.local`
 
